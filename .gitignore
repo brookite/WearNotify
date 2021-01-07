@@ -1,0 +1,7 @@
+.idea/
+
+/test_imgs/
+
+/test_server/
+
+__pycache__/
