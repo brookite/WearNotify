@@ -8,6 +8,16 @@ def format_filename():
     return dt.strftime("log_%d%m%Y_%H%M%S.log")
 
 
+def check_workdir():
+    if __file__:
+        parent = os.path.dirname(os.path.dirname(__file__))
+        if not os.path.samefile(parent, os.getcwd()):
+            os.chdir(parent)
+
+
+check_workdir()
+
+
 DEFAULT_PIPELINE_SETTINGS = {
     # DON'T DELETE ANY KEYS IN THIS DICT. ELSE PIPELINE WON'T CREATED
     "start": None,

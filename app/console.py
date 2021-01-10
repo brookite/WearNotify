@@ -1,21 +1,8 @@
 from common import App
 from time import sleep
-from core.configs import APP_VERSION_NAME, BUILD_INFO, APP_BRANCH, MAINTAINER, APP_NAME, BUILD_STATUS
+from core.configs import WELCOME_MSG, ABOUT_MSG
 from core.logger import get_logger
 import sys
-
-CREDITS = """
-{}
-{}
-{} {} {}
-
-Powerful, speedly, lifehacking system for
-delivery information to wear devices
-by {}
-2021
-
-Licensed under MIT License (read LICENSE file)
-""".format(APP_NAME, APP_VERSION_NAME, BUILD_STATUS, BUILD_INFO, APP_BRANCH, MAINTAINER)
 
 inputservice = "default"
 bundle = None
@@ -31,8 +18,7 @@ def termux(bundle):
 
 
 def about(bundle):
-    msg = "{} {} by {}".format(APP_NAME, APP_VERSION_NAME, MAINTAINER)
-    bundle.send_message(msg, user_action)
+    bundle.send_message(ABOUT_MSG, user_action)
 
 
 def chmnemmod(bundle):
@@ -62,7 +48,7 @@ def main():
     global inputservice, bundle
     logger = get_logger()
     bundle = App()
-    print(CREDITS)
+    print(WELCOME_MSG)
     sleep(0.1)
     while True:
         try:
