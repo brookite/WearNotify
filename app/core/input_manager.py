@@ -15,7 +15,7 @@ def load_services(app):
     paths = lookup_services_path("input_services")
     for path in paths:
         name = os.path.basename(path).replace(".py", "")
-        imported[name] = InputService(name, import_service.load_py_from(path), app)
+        imported[name] = InputService(name, import_service.load_py_from(path), app, path)
     return imported
 
 

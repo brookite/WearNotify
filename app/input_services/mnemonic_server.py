@@ -2,11 +2,13 @@ import http.server
 import socketserver
 from threading import Thread, Event
 import urllib.parse
+import os
+import json
 
 
 PORT = 6904
 app = None
-REQ = "<html><head><title>SEZ Mnemonic</title></head><body>Done! It's working</body>"
+REQ = "<html><head><title>Mnemonic Server</title></head><body>Done! It's working</body>"
 event = Event()
 uact = False
 
@@ -26,15 +28,31 @@ class Manipulator:
         self._map = {}
         self._mods = [self.numberroll,
                       self.reverse_numberroll,
-                      self.previous_roll]
+                      self.previous_roll,
+                      self.staticroll,
+                      self.modulenameroll]
+        self._DEFAULT_MODS_COUNT = 3
         self._selectedmod = 0
         self._event = Event()
-        self.history = [0]
+        self._history = [0]
         self._user_action = False
         self._extra_flush_flag = False
         self.pair(4, self.flush)
         self.pair(5, self.push)
+        self.pair(6, self.repeat_symbol)
+        self.pair(7, self.erase_symbol)
         self.pair(1, self.input)
+        self.pair(8, self.check_state)
+        self.pair(9, self.flush_modcursor)
+        self.pair(10, self.quit_contexts)
+
+    @property
+    def ctx(self):
+        return self._ctx
+
+    @property
+    def app(self):
+        return self._app
 
     def numberroll(self):
         nums = list(map(str, range(1, 10))) + ["0", " ", "null"]
@@ -43,6 +61,38 @@ class Manipulator:
             if cursor == len(nums):
                 cursor = 0
             yield nums[cursor]
+            cursor += 1
+
+    def staticroll(self):
+        path = self.ctx.get_cache_path("inputs.json")
+        if not os.path.exists(path):
+            while True:
+                yield "DATA NOT FOUND"
+        else:
+            try:
+                fd = open(path, "r", encoding=self.ctx.absolute_cfg("DEFAULT_ENCODING"))
+                lst = json.load(fd)
+                fd.close()
+                cursor = 0
+                while True:
+                    if len(lst) == 0:
+                        yield "DATA NOT FOUND"
+                    else:
+                        if cursor == len(lst):
+                            cursor = 0
+                        yield lst[cursor]
+                        cursor += 1
+            except Exception as e:
+                yield "Error: {}".format(str(e))
+
+    def modulenameroll(self):
+        modulenames = list(map(lambda x: x if x != "default" else "000",
+                               self.app.registries.keys()))
+        cursor = 0
+        while True:
+            if cursor == len(modulenames):
+                cursor = 0
+            yield modulenames[cursor]
             cursor += 1
 
     def reverse_numberroll(self):
@@ -57,10 +107,37 @@ class Manipulator:
     def previous_roll(self):
         cursor = 0
         while True:
-            if cursor == len(self.history):
+            if cursor == len(self._history):
                 cursor = 0
-            yield self.history[cursor]
+            yield self._history[cursor]
             cursor += 1
+
+    def msg(self, s):
+        self._app.direct_message(s, 0.5)
+
+    # [PUBLIC AREA
+
+    @property
+    def tmp(self):
+        return self._tmp
+
+    @tmp.setter
+    def tmp(self, value):
+        if isinstance(value, str):
+            self._tmp = value
+
+    @property
+    def buffer(self):
+        return self._buffer
+
+    @buffer.setter
+    def buffer(self, value):
+        if isinstance(value, str):
+            self._buffer = value
+
+    @property
+    def history(self):
+        return tuple(self._history)
 
     def flush(self):
         if self._user_action:
@@ -78,9 +155,6 @@ class Manipulator:
         else:
             self.chmod()
 
-    def msg(self, s):
-        self._app.direct_message(s, 0.5)
-
     def input(self):
         if self._extra_flush_flag:
             self._extra_flush_flag = False
@@ -89,7 +163,33 @@ class Manipulator:
         result = next(self._cursor)
         self._tmp = str(result)
         self.msg("Temp input: {}".format(self._tmp))
-        self.history[0] = self._tmp
+        self._history[0] = self._tmp
+
+    def erase_symbol(self):
+        if len(self._buffer) > 0:
+            self._buffer = self._buffer[:-1]
+            self.msg("Typed all: {}".format(self._buffer))
+
+    def flush_modcursor(self):
+        self._cursor = self._mods[self._selectedmod]()
+        self.msg("Selected mod: {}".format(self._cursor.__name__))
+
+    def quit_contexts(self):
+        self._app.input_context.null()
+
+    def repeat_symbol(self):
+        tmp = self._history[0]
+        if isinstance(tmp, str) and tmp:
+            if tmp == "null":
+                self._buffer += ""
+            else:
+                self._buffer += tmp
+            self.msg("Repeated: {} | all={}".format(tmp, self._buffer))
+
+    def check_state(self):
+        self.msg("User Action: {}; Input Context: {}; Selected mod: {}".format(self._user_action,
+            self._app.input_context.get(),
+            self._mods[self._selectedmod].__name__))
 
     def push(self):
         if self._user_action:
@@ -102,7 +202,7 @@ class Manipulator:
             else:
                 self._buffer += self._tmp
             self.msg("Typed: {} | all={}".format(self._tmp, self._buffer))
-            self.history.insert(1, self._buffer)
+            self._history.insert(1, self._buffer)
             self._tmp = None
         elif not self._tmp and self._buffer:
             self.msg("Posting...")
@@ -116,6 +216,17 @@ class Manipulator:
         assert callable(function)
         self._map[mnem] = function
 
+    def unpair(self, mnem):
+        self._map.remove(mnem)
+
+    def addmod(self, function):
+        assert callable(function)
+        self._mods.append(function)
+
+    def resetmods(self):
+        self._mods = self._mods[:self._DEFAULT_MODS_COUNT]
+    # ]
+
     def post(self):
         isok = self._app.process(
             self._buffer,
@@ -126,9 +237,6 @@ class Manipulator:
         if not isok:
             self.msg("Something bad")
         self._buffer = ""
-
-    def addmod(self, function):
-        self._mods.append(function)
 
     def handle(self, mnem):
         if mnem:

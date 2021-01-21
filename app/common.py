@@ -34,9 +34,10 @@ class App:
         self.delivery_services = delivery.load_services()
         self.input_context = InputContext()
         self._request_lock = RLock()
-        self._mnemmode = None
-        self._mnemmem = None
+        self._mnemmode = self.config.absolute_cfg("default_mnemonic_mode")
+        self._mnemmem = self.config.absolute_cfg("default_mnemonic_mode")
         self.input_context.sethook(self.hookmnemmod)
+        self._current_user_action = None
 
     @property
     def request_lock(self):
@@ -96,8 +97,9 @@ class App:
         self.logger.debug("Clearing all cache...")
         cleanup()
 
-    def delegate(self, reg, request, additional, deny_cache=False):
+    def delegate(self, reg, request, additional, user_action, deny_cache=False):
         self.logger.debug(f"Delegating request (registry={reg}, request={request})")
+        self._current_user_action = user_action
         if reg is None or request is None:
             self.logger.info("Invalid registry")
             return None, None
@@ -190,7 +192,7 @@ class App:
             if tmp:
                 input_data = tmp
         registry, request, additional = self.handle_input(input_data, handle_ctx)
-        response, module = self.delegate(registry, request, additional, deny_cache)
+        response, module = self.delegate(registry, request, additional, user_action, deny_cache)
         if not response:
             self.unlock_requests()
             return False
@@ -198,3 +200,10 @@ class App:
         self.post(user_action)
         self.unlock_requests()
         return True
+
+    def quit(self):
+        self.input_context.null()
+        for inputservice in self.input_services:
+            self.input_services[inputservice].exit()
+        for delservice in self.delivery_services:
+            delservice.exit()

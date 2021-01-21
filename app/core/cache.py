@@ -7,6 +7,7 @@ from .logger import get_logger
 
 
 LOGGER = get_logger("cache")
+ALLOWED_CACHE = ["fdel", "mnemonic_server"]
 
 PATH = os.path.join(DATA_PATH, "cache")
 REQUEST_CACHE = os.path.join(PATH, "requests")
@@ -15,50 +16,33 @@ REQUEST_CACHE = os.path.join(PATH, "requests")
 class RuntimeCache:
     def __init__(self):
         LOGGER.debug("Creating runtime cache data")
-        self._byte_storage = {}
-        self._str_storage = {}
+        self._storage = {}
 
     def put(self, name, data):
-        if name in self._str_storage:
-            LOGGER.info(f"Wiping old string data in runtime cache: {name}")
-            del self._str_storage[name]
-        elif name in self._byte_storage:
+        if name in self._storage:
             LOGGER.info(f"Wiping old data in runtime cache: {name}")
-            del self._byte_storage[name]
-        if isinstance(data, str):
-            self._str_storage[name] = data.encode("utf-8")
-        else:
-            self._byte_storage[name] = bytes(data)
+            del self._storage[name]
+        self._storage[name] = bytes(data)
 
     def get(self, name):
         LOGGER.debug(f"Getting runtime cache by name {name}")
-        if name in self._str_storage:
-            return self._str_storage[name]
-        elif name in self._byte_storage:
-            return self._byte_storage[name]
+        if name in self._storage:
+            return self._storage[name]
 
     def clear(self):
         LOGGER.info("Clearing runtime cache")
-        self._byte_storage.clear()
-        self._str_storage.clear()
+        self._storage.clear()
 
     def is_cached(self, name):
-        return name in self._str_storage or name in self._byte_storage
+        return name in self._storage
 
     def size(self):
-        c = 0
-        for key in self._byte_storage:
-            c += len(self._byte_storage[key])
-        for key in self._str_storage:
-            c += len(self._str_storage[key])
-        return c
+        return len(self._storage)
 
     def remove(self, name):
         LOGGER.debug(f"Removing runtime cache by name {name}")
-        if name in self._str_storage:
-            return self._str_storage.pop(name)
-        if name in self._byte_storage:
-            return self._byte_storage.pop(name)
+        if name in self._storage:
+            return self._storage.pop(name)
 
 
 def put_request_cache(request, data):
@@ -143,11 +127,15 @@ def cleanup():
     for root, _, files in os.walk(PATH):
         for file in files:
             path = os.path.join(root, file)
-            try:
-                os.remove(path)
-                LOGGER.debug(f"Cleaning {path}")
-            except PermissionError:
-                LOGGER.info(f"Skipping {path} due to PermissionError")
+            if os.path.basename in ALLOWED_CACHE \
+                or (os.path.basename(os.path.dirname(path)) in ALLOWED_CACHE):
+                continue
+            else:
+                try:
+                    os.remove(path)
+                    LOGGER.debug(f"Cleaning {path}")
+                except PermissionError:
+                    LOGGER.info(f"Skipping {path} due to PermissionError")
 
 
 def remove_module_cache(module, filename):

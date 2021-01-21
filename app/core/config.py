@@ -42,7 +42,7 @@ class Config:
         LOGGER.info("Loading configs from configuration file")
         path = os.path.join(configs.DATA_PATH, "config.txt")
         if not os.path.exists(path):
-            LOGGER.warn("config.txt wasn't found")
+            LOGGER.info("config.txt wasn't found")
             return
         with open(path, "r") as fobj:
             lines = fobj.read().strip().split("\n")

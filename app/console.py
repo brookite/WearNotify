@@ -1,6 +1,6 @@
 from common import App
 from time import sleep
-from core.configs import WELCOME_MSG, ABOUT_MSG
+from core.configs import WELCOME_MSG, ABOUT_MSG, APP_NAME
 from core.logger import get_logger
 import sys
 
@@ -68,7 +68,7 @@ def main():
                 COMMANDS[req.lower()](bundle)
                 continue
             registry, request, additional = bundle.handle_input(req)
-            response, module = bundle.delegate(registry, request, additional)
+            response, module = bundle.delegate(registry, request, additional, user_action)
             if not response:
                 continue
             bundle.pack(request, response, module)
@@ -80,6 +80,7 @@ def main():
         except Exception:
             logger.exception(f"{APP_NAME} prompt exception:")
     logger.info("App is closing...")
+    bundle.quit()
 
 
 if __name__ == '__main__':

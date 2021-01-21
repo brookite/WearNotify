@@ -14,7 +14,7 @@ SPECIAL_SYMBOLS = [':', ' ', '=']
 
 def split(request, registries):
     special = list(filter(lambda x: len(x) > 3 or x.isalpha(), registries.keys()))
-    if len(request) > 3 and request.startswith("0"):
+    if len(request) >= 3 and request.startswith("0"):
         reg = request[:3]
         req = request[4:]
         return reg, req

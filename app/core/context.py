@@ -29,9 +29,19 @@ class ModuleContext:
             self._app = app
             self._mnems = None
         self._builded_ext = {}
+        self._user_action = None
         self._logger = get_logger(f"{module.name}")
         self._custom_mnems = {}
         self._load_mnems()
+
+    @property
+    def current_user_action(self):
+        return self._app._current_user_action
+
+    @current_user_action.setter
+    def current_user_action(self, value):
+        if callable(value):
+            return self._user_action
 
     def _load_mnems(self):
         if not self._module.path:
@@ -152,15 +162,12 @@ class ModuleContext:
         LOGGER.info("Removing module cache: %s" % filename)
         cache.remove_module_cache(self._module.name, filename)
 
-    def import_submodule_by_path(self, path, change_cwd=False):
+    def import_submodule_by_path(self, path):
         LOGGER.info("Importing submodule: %s" % path)
-        prevcwd = None
-        if change_cwd:
-            prevcwd = os.getcwd()
-            os.chdir(self._module.path)
+        prevcwd = os.getcwd()
+        os.chdir(self._module.path)
         module = load_py_from(os.path.abspath(path))
-        if change_cwd:
-            os.chdir(prevcwd)
+        os.chdir(prevcwd)
         return module
 
     def check_errb(self, port):
@@ -176,6 +183,20 @@ class ModuleContext:
 
     def put_config(self, name, value):
         return self._cfg.put(name, value, module=self._module)
+
+    def chmnemmod(self, mode):
+        if self._app:
+            self._app.chmnemmod(pref=mode)
+
+    def quit(self):
+        self._app.input_context.null()
+
+    def mnem_manipulator(self):
+        if "mnemonic_server" in self._app.input_services:
+            module = self._app.input_services["mnemonic_server"]._nativemodule
+            if hasattr(module, "manip"):
+                if module.manip:
+                    return module.manip
 
 
 class ExtensionContext:
@@ -235,15 +256,12 @@ class ExtensionContext:
         else:
             return os.path.join(self._extension.path, path)
 
-    def import_submodule_by_path(self, path, change_cwd=False):
+    def import_submodule_by_path(self, path):
         LOGGER.info("Importing submodule: %s" % path)
-        prevcwd = None
-        if change_cwd:
-            prevcwd = os.getcwd()
-            os.chdir(self._module.path)
+        prevcwd = os.getcwd()
+        os.chdir(self._module.path)
         module = load_py_from(os.path.abspath(path))
-        if change_cwd:
-            os.chdir(prevcwd)
+        os.chdir(prevcwd)
         return module
 
     def import_submodule(self, module_name):
@@ -343,27 +361,47 @@ class InputContext:
 
     def set(self, value, module):
         LOGGER.debug("Setting context, new context is %s" % value)
+        if self._module:
+            if self._module.configs["ENTER_CONTEXT"]:
+                self._module.exit()
         self.hook(self._registry, value, self._module, module)
         self._registry = value
         self._module = module
 
     def null(self):
         LOGGER.debug("Clearing context")
+        if self._module:
+            if self._module.configs["ENTER_CONTEXT"]:
+                self._module.exit()
+        self.hook(self._registry, None, self._module, None)
         self._registry = None
         self._module = None
 
 
 class InputServiceContext:
-    def __init__(self, nativemodule, app):
-        self._nativemodule = nativemodule
+    def __init__(self, inputservice, app):
+        self._inputservice = inputservice
+        self._nativemodule = inputservice._native_module
+        self._runtimecache = app.runtime_cache
+        self._extensions = app.extensions
+        self._builded_ext = {}
         self._app = app
         self._mnems = self._app.mnems
         self._cfg = app.config
         self._custom_mnems = {}
-        self._logger = get_logger(f"{nativemodule.__name__}")
+        self._logger = get_logger(f"{self._nativemodule.__name__}")
 
     def fork(self):
         return self._app
+
+    def extension(self, name):
+        LOGGER.info("Using extension %s" % name)
+        if name not in self._builded_ext:
+            if name not in self._extensions:
+                LOGGER.error(f"Extension {name} wasn't found")
+                return None
+            self._builded_ext[name] = self._extensions[name].build(self._module)
+        return self._builded_ext[name]
 
     def get_mnenmoic(self, mnem, onlycustom=False):
         if mnem in self._mnems and not onlycustom:
@@ -382,6 +420,58 @@ class InputServiceContext:
 
     def logger(self):
         return self._logger
+
+    def check_errb(self, port):
+        LOGGER.info("Checking port availability: %s" % port)
+        s, r = errb.port_handler(port, self._errb)
+        return s is not None or r is not None
+
+    def send_errb(self, port, data: bytes):
+        LOGGER.info("Sending to ERRB port %s" % port)
+        sender, _ = errb.port_handler(port, self._errb)
+        if sender:
+            errb.post_sender(sender, data)
+
+    def recieve_errb(self, port):
+        LOGGER.info("Recieveing from ERRB port %s" % port)
+        _, reciever = errb.port_handler(port, self._errb)
+        if reciever:
+            return errb.recieve(reciever)
+
+    def put_cache(self, filename, data):
+        LOGGER.info("Adding new cache %s" % filename)
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        return cache.put_module_cache(self._nativemodule.__name__, filename, data)
+
+    def put_tempdata(self, name, data):
+        self._runtimecache.put(name, data)
+
+    def get_tempdata(self, name):
+        return self._runtimecache.get(name)
+
+    def is_cached_tempdata(self, name):
+        return self._runtimecache.is_cached(name)
+
+    def remove_tempdata(self, name):
+        self._runtimecache.remove(name)
+
+    def get_cached(self, filename):
+        LOGGER.info("Getting cache %s" % filename)
+        return cache.get_module_cached(self._nativemodule.__name__, filename)
+
+    def get_cache_path(self, filename=None):
+        pth = cache.module_path(self._nativemodule.__name__)
+        if filename:
+            return os.path.join(pth, filename)
+        return pth
+
+    def is_cached(self, filename):
+        return cache.is_module_cached(self._nativemodule.__name__, filename)
+
+    def remove_cache(self, filename):
+        LOGGER.info("Removing module cache: %s" % filename)
+        cache.remove_module_cache(self._nativemodule.__name__, filename)
 
     @property
     def version_array(self):
@@ -409,6 +499,37 @@ class InputServiceContext:
 
     def put_config(self, name, value):
         return self._cfg.put(name, value, module=self._nativemodule)
+
+    def enter_context(self, module):
+        if module.name in self._app.registry:
+            if "ENTER_CONTEXT" in module.configs:
+                if module.configs["ENTER_CONTEXT"]:
+                    self._app.input_context.set(self._app.registry[module.name], module)
+
+    def exit_context(self):
+        self._app.input_context.null()
+
+    def import_submodule_by_path(self, path):
+        LOGGER.info("Importing submodule: %s" % path)
+        prevcwd = os.getcwd()
+        os.chdir(self._inputservice.path)
+        module = load_py_from(os.path.abspath(path))
+        os.chdir(prevcwd)
+        return module
+
+    def internal_path(self, path=None):
+        LOGGER.info("Resolving internal path: %s" % path)
+        if path is None:
+            return self._inputservice.path
+        else:
+            return os.path.join(self._inputservice.path, path)
+
+    def import_submodule(self, module_name):
+        LOGGER.info("Importing submodule %s" % module_name)
+        # module name without py
+        module_name = module_name.replace(".py", "") + ".py"
+        module = load_py_from(os.path.join(self._inputservice.path, module_name))
+        return module
 
 
 class DeliveryServiceContext:

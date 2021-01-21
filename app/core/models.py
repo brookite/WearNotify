@@ -69,6 +69,12 @@ class Module:
         LOGGER.debug(f"{self._name} is initializing")
         _module_call(self._native_module, "init", self._ctx)
 
+    def exit(self):
+        _module_call(self._native_module, "exit", self._ctx)
+
+    def help(self):
+        return _module_call(self._native_module, "help")
+
     def standard_params(self, dct):
         defaults = DEFAULT_MODULE_CONFIG
         for key in defaults:
@@ -103,6 +109,12 @@ class DeliveryService:
     def name(self):
         return self._name
 
+    def exit(self):
+        return _module_call(self._native_module, "exit", self._ctx)
+
+    def init(self):
+        return _module_call(self._native_module, "init", self._ctx)
+
     def begin(self):
         _module_call(self._native_module, "begin", self._ctx)
 
@@ -120,12 +132,13 @@ class DeliveryService:
 
 
 class InputService:
-    def __init__(self, name, native_module, app):
+    def __init__(self, name, native_module, app, path):
         LOGGER.debug(f"Creating input service with name {name}")
         self._name = name
         self._native_module = native_module
         self._app = app
-        self._ctx = ctx.InputServiceContext(native_module, app)
+        self._path = os.path.dirname(path)
+        self._ctx = ctx.InputServiceContext(self, app)
         self.init()
 
     @property
@@ -139,6 +152,12 @@ class InputService:
         if result is None:
             result = {}
         return result
+
+    def help(self):
+        return _module_call(self._native_module, "help")
+
+    def exit(self):
+        return _module_call(self._native_module, "exit", self._ctx)
 
     def init(self):
         return _module_call(self._native_module, "init", self._ctx)
