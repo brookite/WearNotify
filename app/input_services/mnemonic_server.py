@@ -12,6 +12,9 @@ REQ = "<html><head><title>Mnemonic Server</title></head><body>Done! It's working
 event = Event()
 uact = False
 
+
+httpd = None
+thread = None
 manip = None
 context = None
 
@@ -31,7 +34,7 @@ class Manipulator:
                       self.previous_roll,
                       self.staticroll,
                       self.modulenameroll]
-        self._DEFAULT_MODS_COUNT = 3
+        self._DEFAULT_MODS_COUNT = len(self._mods)
         self._selectedmod = 0
         self._event = Event()
         self._history = [0]
@@ -311,9 +314,6 @@ def user_action():
         event.clear()
 
 
-socketserver.TCPServer.allow_reuse_address = True
-
-
 class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
     def _form_response(self):
         self.protocol_version = 'HTTP/1.1'
@@ -348,19 +348,25 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
             http.server.SimpleHTTPRequestHandler.log_message(self, format, *args)
 
 
-Handler = MyHttpRequestHandler
-
-
 def server():
-    with socketserver.TCPServer(("", PORT), Handler) as httpd:
-        print("Http Server Serving at port", PORT)
-        httpd.serve_forever()
+    global httpd
+    httpd = socketserver.TCPServer(("", PORT), MyHttpRequestHandler)
+    httpd.allow_reuse_address = True
+    print("Http Server Serving at port", PORT)
+    httpd.serve_forever()
 
 
 def init(ctx):
-    global app, manip
+    global app, manip, thread
     manip = Manipulator(ctx)
     app = ctx.fork()
     thread = Thread(target=server)
     thread.setDaemon(True)
     thread.start()
+
+
+def exit(ctx):
+    global thread, httpd
+    httpd.shutdown()
+    httpd.server_close()
+    thread.join()
