@@ -350,8 +350,8 @@ class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 def server():
     global httpd
+    socketserver.TCPServer.allow_reuse_address = True
     httpd = socketserver.TCPServer(("", PORT), MyHttpRequestHandler)
-    httpd.allow_reuse_address = True
     print("Http Server Serving at port", PORT)
     httpd.serve_forever()
 
@@ -367,6 +367,7 @@ def init(ctx):
 
 def exit(ctx):
     global thread, httpd
-    httpd.shutdown()
-    httpd.server_close()
-    thread.join()
+    if httpd and thread:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join()
