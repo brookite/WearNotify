@@ -1,6 +1,6 @@
 import time
 
-from core.registry import get_registry, route
+from core.registry import get_registry, route, load_predefined_registries
 from core.module_loader import load_modules
 from core.extension_loader import load_extensions
 from core.errb import load_sockets
@@ -28,6 +28,7 @@ class App:
         self.errb = load_sockets()
         self.extensions = load_extensions(self)
         self.modules = load_modules(self)
+        load_predefined_registries(self.registries, self.modules)
         self.input_services = input_manager.load_services(self)
         self.config.load(self)
         self.pipeline = Pipeline(self.config)

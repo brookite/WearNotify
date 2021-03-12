@@ -35,6 +35,12 @@ def split(request, registries):
         return "default", request
 
 
+def load_predefined_registries(registries, modules):
+    for name in modules:
+        if name not in registries:
+            registries[name] = name
+
+
 def get_registry():
     LOGGER.debug("Getting registries")
     registry = os.path.join(DATA_PATH, "registry.json")
