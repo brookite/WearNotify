@@ -1,6 +1,7 @@
 import subprocess as sub
 import json
 
+
 def raw_input(ctx):
     try:
         s = sub.run("termux-dialog", stdout=sub.PIPE)

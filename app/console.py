@@ -3,6 +3,7 @@ from time import sleep
 from core.configs import WELCOME_MSG, ABOUT_MSG, APP_NAME
 from core.logger import get_logger
 import sys
+import os
 
 inputservice = "default"
 bundle = None
@@ -25,7 +26,7 @@ def chmnemmod(bundle):
     bundle.chmnemmod()
 
 
-QUIT = ["quit()", "quit", "exit", "exit()"]
+QUIT = ["quit()", "quit", "exit", "exit(), logout()", "logout"]
 END_USER_ACTION = '00'
 COMMANDS = {
     "cleanup": cleanup,
@@ -81,6 +82,8 @@ def main():
             logger.exception(f"{APP_NAME} prompt exception:")
     logger.info("App is closing...")
     bundle.quit()
+    if req.lower() in QUIT and req.lower().startswith("logout") and os.platform != "nt":
+        os.system("logout")
 
 
 if __name__ == '__main__':

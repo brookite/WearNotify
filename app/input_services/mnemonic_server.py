@@ -33,7 +33,9 @@ class Manipulator:
                       self.reverse_numberroll,
                       self.previous_roll,
                       self.staticroll,
-                      self.modulenameroll]
+                      self.modulenameroll,
+                      self.special_symbols_roll
+                      ]
         self._DEFAULT_MODS_COUNT = len(self._mods)
         self._selectedmod = 0
         self._event = Event()
@@ -113,6 +115,15 @@ class Manipulator:
             if cursor == len(self._history):
                 cursor = 0
             yield self._history[cursor]
+            cursor += 1
+
+    def special_symbols_roll(self):
+        nums = list("@#,.!?;^&*()-+=_|/%<>:'{}[]")
+        cursor = 0
+        while True:
+            if cursor == len(nums):
+                cursor = 0
+            yield nums[cursor]
             cursor += 1
 
     def msg(self, s):
@@ -361,7 +372,6 @@ def init(ctx):
     manip = Manipulator(ctx)
     app = ctx.fork()
     thread = Thread(target=server)
-    thread.setDaemon(True)
     thread.start()
 
 
