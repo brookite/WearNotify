@@ -77,12 +77,13 @@ def main():
             sleep(0.2)
         except KeyboardInterrupt:
             logger.info("Exiting by CTRL+C...")
+            req = ''
             break
         except Exception:
             logger.exception(f"{APP_NAME} prompt exception:")
     logger.info("App is closing...")
     bundle.quit()
-    if req.lower() in QUIT and req.lower().startswith("logout") and os.platform != "nt":
+    if req.lower() in QUIT and req.lower().startswith("logout") and os.name != "nt":
         os.system("logout")
 
 

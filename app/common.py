@@ -194,7 +194,7 @@ class App:
                 input_data = tmp
         registry, request, additional = self.handle_input(input_data, handle_ctx)
         response, module = self.delegate(registry, request, additional, user_action, deny_cache)
-        if not response:
+        if not response and response != '':
             self.unlock_requests()
             return False
         self.pack(request, response, module)

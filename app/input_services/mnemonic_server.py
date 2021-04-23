@@ -33,6 +33,7 @@ class Manipulator:
                       self.reverse_numberroll,
                       self.previous_roll,
                       self.staticroll,
+                      self.fdelroll,
                       self.modulenameroll,
                       self.special_symbols_roll
                       ]
@@ -89,6 +90,21 @@ class Manipulator:
                         cursor += 1
             except Exception as e:
                 yield "Error: {}".format(str(e))
+
+    def fdelroll(self):
+        path = os.path.join(os.path.split(os.path.abspath(self.ctx.get_cache_path()))[0], "fdel")
+        if not os.path.exists(path):
+            os.mkdir(path)
+        lst = list(map(lambda x: "fdel " + x, os.listdir(path)))
+        cursor = 0
+        while True:
+            if len(lst) == 0:
+                yield "DATA NOT FOUND"
+                continue
+            if cursor == len(lst):
+                cursor = 0
+            yield lst[cursor]
+            cursor += 1
 
     def modulenameroll(self):
         modulenames = list(map(lambda x: x if x != "default" else "000",
