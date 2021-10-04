@@ -94,7 +94,8 @@ def is_request_cached(request_addr):
 
 
 def is_module_cached(module, filename):
-    return os.path.exists(os.path.join(PATH, module, filename))
+    path = os.path.join(PATH, module, filename)
+    return os.path.exists(path) and os.path.isfile(path)
 
 
 def get_module_cached(module, filename):

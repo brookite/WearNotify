@@ -89,7 +89,7 @@ class Module:
         if result is None:
             result = {}
         if "NOCACHE" not in result:
-            result["NOCACHE"] = False
+            result["NOCACHE"] = True
         if "ENTER_CONTEXT" not in result:
             result["ENTER_CONTEXT"] = False
         if "QUIT_COMMANDS" not in result:
