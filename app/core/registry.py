@@ -1,4 +1,4 @@
-from .configs import DATA_PATH
+from .appconfig import DATA_PATH
 from .storage import read_json
 from .stdmodules import load_std_registry, \
     is_std_registry, get_stdmodule

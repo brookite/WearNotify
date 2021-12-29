@@ -2,7 +2,7 @@ from . import import_service
 from . import context as ctx
 import os
 from .logger import get_logger
-from .configs import DEFAULT_MODULE_CONFIG
+from .appconfig import DEFAULT_MODULE_CONFIG
 
 
 LOGGER = get_logger("objects")
@@ -18,6 +18,10 @@ def _module_attr(module, attr):
     except Exception:
         LOGGER.exception("Unknown attribute getting error: ")
         return None
+
+
+def _set_in_module(module, attr, value):
+    module.__setattr__(attr, value)
 
 
 def _module_call(module, attr, *args, **kwargs):
@@ -41,11 +45,17 @@ class Module:
         self._path = path
         self._app = app
         self._ctx = ctx.ModuleContext(self, app)
-        _module_call(self._native_module, "init", self._ctx)
+        if self._native_module:
+            _set_in_module(self._native_module, "ctx", self._ctx)
+        self.init()
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def native_module(self):
+        return self._native_module
 
     @property
     def context(self):
@@ -63,19 +73,24 @@ class Module:
 
     def swallow(self, value):
         LOGGER.debug(f"{self._name} swallows: {value}")
-        return _module_call(self._native_module, "swallow", self._ctx, value)
+        return _module_call(self._native_module, "swallow", value)
+
+    def interrupt_call(self, value):
+        LOGGER.debug(f"{self._name} interrupts by: {value}")
+        return _module_call(self._native_module, "interrupt_call", value)
 
     def init(self):
         LOGGER.debug(f"{self._name} is initializing")
-        _module_call(self._native_module, "init", self._ctx)
+        _module_call(self._native_module, "init")
 
     def exit(self):
-        _module_call(self._native_module, "exit", self._ctx)
+        _module_call(self._native_module, "exit")
 
-    def help(self):
-        return _module_call(self._native_module, "help")
+    def help(self, *args, **kwargs):
+        return _module_call(self._native_module, "help", *args, **kwargs)
 
-    def standard_params(self, dct):
+    @staticmethod
+    def standard_params(dct):
         defaults = DEFAULT_MODULE_CONFIG
         for key in defaults:
             if key not in dct:
@@ -85,7 +100,8 @@ class Module:
     @property
     def configs(self):
         result = _module_attr(self._native_module, "SETTINGS") \
-            or _module_attr(self._native_module, "CONFIGS")
+            or _module_attr(self._native_module, "CONFIGS") \
+            or _module_attr(self._native_module, "MANIFEST")
         if result is None:
             result = {}
         if "NOCACHE" not in result:
@@ -98,37 +114,61 @@ class Module:
 
 
 class DeliveryService:
-    def __init__(self, name, native_module):
+    def __init__(self, name, native_module, path, app):
         LOGGER.debug(f"Creating delivery service with name {name}")
         self._name = name
         self._native_module = native_module
-        self._ctx = ctx.DeliveryServiceContext(native_module)
-        _module_call(self._native_module, "init", self._ctx)
+        self._path = path
+        self._ctx = ctx.DeliveryServiceContext(self, native_module, app)
+        if self._native_module:
+            _set_in_module(self._native_module, "ctx", self._ctx)
+        self.init()
+
+    @property
+    def configs(self):
+        result = _module_attr(self._native_module, "SETTINGS") \
+                 or _module_attr(self._native_module, "CONFIGS") \
+                 or _module_attr(self._native_module, "MANIFEST")
+        if result is None:
+            result = {}
+        return result
+
+    @property
+    def path(self):
+        return self._path
 
     @property
     def name(self):
         return self._name
 
     def exit(self):
-        return _module_call(self._native_module, "exit", self._ctx)
+        return _module_call(self._native_module, "exit")
 
     def init(self):
-        return _module_call(self._native_module, "init", self._ctx)
+        return _module_call(self._native_module, "init")
+
+    def help(self, *args):
+        LOGGER.debug(f"Returning help message")
+        _module_call(self._native_module, "help", *args)
 
     def begin(self):
-        _module_call(self._native_module, "begin", self._ctx)
+        _module_call(self._native_module, "begin")
 
     def finished(self, count):
-        _module_call(self._native_module, "finished", self._ctx, count)
+        _module_call(self._native_module, "finished", count)
 
     def send(self, packet):
         try:
             if hasattr(self._native_module, "send"):
-                self._native_module.__getattribute__("send")(self._ctx, packet)
+                self._native_module.__getattribute__("send")(packet)
             else:
                 LOGGER.error(f"Failed to send packet: send method wasn't found. Name: {self._name}")
         except Exception:
             LOGGER.exception(f"Delivery service with name {self._name} exception: ")
+
+    @property
+    def native_module(self):
+        return self._native_module
 
 
 class InputService:
@@ -139,6 +179,8 @@ class InputService:
         self._app = app
         self._path = os.path.dirname(path)
         self._ctx = ctx.InputServiceContext(self, app)
+        if self._native_module:
+            _set_in_module(self._native_module, "ctx", self._ctx)
         self.init()
 
     @property
@@ -146,27 +188,37 @@ class InputService:
         return self._name
 
     @property
+    def path(self):
+        return self._path
+
+    @property
+    def native_module(self):
+        return self._native_module
+
+    @property
     def configs(self):
         result = _module_attr(self._native_module, "SETTINGS") \
-            or _module_attr(self._native_module, "CONFIGS")
+                 or _module_attr(self._native_module, "CONFIGS") \
+                 or _module_attr(self._native_module, "MANIFEST")
         if result is None:
             result = {}
         return result
 
-    def help(self):
-        return _module_call(self._native_module, "help")
+    def help(self, *args):
+        LOGGER.debug(f"Returning help message")
+        _module_call(self._native_module, "help", *args)
 
     def exit(self):
-        return _module_call(self._native_module, "exit", self._ctx)
+        return _module_call(self._native_module, "exit")
 
     def init(self):
-        return _module_call(self._native_module, "init", self._ctx)
+        return _module_call(self._native_module, "init")
 
     def raw_input(self, *args):
-        return _module_call(self._native_module, "raw_input", self._ctx, *args)
+        return _module_call(self._native_module, "raw_input", *args)
 
     def user_action(self, *args):
-        return _module_call(self._native_module, "user_action", self._ctx, *args)
+        return _module_call(self._native_module, "user_action", *args)
 
 
 class ExtensionInfo:
@@ -198,10 +250,15 @@ class Extension:
         self._path = path
         self._app = app
         self._ctx = ctx.ExtensionContext(self, module_src, app)
-        if hasattr(self._native_module, "put_ctx"):
-            self.put_ctx(self._ctx)
-        else:
-            self._native_module.ctx = self._ctx
+        if self._native_module:
+            if hasattr(self._native_module, "put_ctx"):
+                self.put_ctx(self._ctx)
+            else:
+                self._native_module.ctx = self._ctx
+
+    @property
+    def native_module(self):
+        return self._native_module
 
     @property
     def name(self):
@@ -221,7 +278,8 @@ class Extension:
     @property
     def configs(self):
         result = _module_attr(self._native_module, "SETTINGS") \
-            or _module_attr(self._native_module, "CONFIGS")
+                 or _module_attr(self._native_module, "CONFIGS") \
+                 or _module_attr(self._native_module, "MANIFEST")
         if result is None:
             result = {}
         return result
@@ -231,69 +289,3 @@ class Extension:
             return super().__getattribute__("_native_module").__getattribute__(attr)
         else:
             LOGGER.warning(f"Extension attribute '{attr}' wasn't found")
-
-
-class ERRBSocket:
-    def __init__(self, alias, port, native_module):
-        LOGGER.info(f"Created ERRB socket with alias={alias} and port={port}")
-        self._alias = alias
-        self._native_module = native_module
-        self._port = port
-
-    def __repr__(self):
-        return f"ERRBSocket(alias={self._alias}, port={self._port})"
-
-    @property
-    def alias(self):
-        return self._alias
-
-    @property
-    def port(self):
-        return self._port
-
-    def make_pair(self, *args):
-        s, r = _module_call(self._native_module, "make_pair", *args)
-        return ERRBSender(s), ERRBReciever(r)
-
-    def is_available(self):
-        return _module_call(self._native_module, "is_available")
-
-
-class ERRBReciever:
-    def __init__(self, native_module):
-        self._native_module = native_module
-
-    def recieve(self, buf=None):
-        return _module_call(self._native_module, "recieve", buf=None)
-
-    def flush(self):
-        return _module_call(self._native_module, "flush")
-
-    @property
-    def port_no(self):
-        return _module_attr(self._native_module, "port_no")
-
-    @property
-    def source(self):
-        return _module_attr(self._native_module, "source")
-
-
-class ERRBSender:
-    def __init__(self, native_module):
-        self._native_module = native_module
-
-    def send(self, data: bytes):
-        if isinstance(data, str):
-            data = data.encode("utf-8")
-        return _module_call(self._native_module, "send", data)
-
-    def flush(self):
-        return _module_call(self._native_module, "flush")
-
-    @property
-    def port_no(self):
-        return _module_attr(self._native_module, "port_no")
-
-    @property
-    def source(self):
-        return _module_attr(self._native_module, "source")

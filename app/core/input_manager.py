@@ -19,9 +19,11 @@ def load_services(app):
     return imported
 
 
-def input_handler(request, registries, input_ctx, modules, handle_ctx=True):
+def input_handler(request, registries, input_ctx, modules, config, handle_ctx=True):
     # if returns null then actions not required
-    if input_ctx.get() is not None and handle_ctx:
+    if not isinstance(request, str) and not config.absolute_cfg("only_string_io_data"):
+        return "default", request, {}
+    elif input_ctx.get() is not None and handle_ctx:
         LOGGER.debug("Handling request in context")
         reg = input_ctx.get()
         module = registry.route(reg, modules, registries)

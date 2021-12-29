@@ -28,8 +28,9 @@ class Fdel(Module):
     def init(self):
         pass
 
-    def filter(self, text):
-        text = re.sub(r"[\n\t\r]+", " ", text)
+    @staticmethod
+    def filter(text):
+        text = re.sub(r"[\n\t\r]+", "|", text)
         return text
 
     def swallow(self, value):
@@ -46,9 +47,37 @@ class Fdel(Module):
         return self.standard_params({"NOCACHE": True})
 
 
+class Help(Module):
+    def __init__(self, app):
+        super().__init__("fdel", None, None, app)
+
+    def init(self):
+        pass
+
+    def swallow(self, value):
+        values = value.split(" ")
+        if len(values) == 0:
+            return "Help for this application wasn't written. Use external documentation files"
+        else:
+            module = values[0]
+            obj = None
+            if module in self._app.modules:
+                obj = self._app.modules[module]
+            elif module in self._app.input_services:
+                obj = self._app.input_services[module]
+            elif module in self._app.delivery_services:
+                obj = self._app.delivery_services[module]
+            obj.help(*values[1:])
+
+    @property
+    def configs(self):
+        return self.standard_params({"NOCACHE": True})
+
+
 REGISTRIES = {
     "idel": Idel,
-    "fdel": Fdel
+    "fdel": Fdel,
+    "help": Help
 }
 
 

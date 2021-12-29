@@ -1,10 +1,9 @@
 import os
 import json
-from .configs import DATA_PATH, MAX_REQUEST_CACHE_SIZE
+from .appconfig import DATA_PATH, MAX_REQUEST_CACHE_SIZE
 from .storage import read_json, write_json
 
 from .logger import get_logger
-
 
 LOGGER = get_logger("cache")
 ALLOWED_CACHE = ["fdel", "mnemonic_server"]
@@ -14,19 +13,42 @@ REQUEST_CACHE = os.path.join(PATH, "requests")
 
 
 class RuntimeCache:
-    def __init__(self):
-        LOGGER.debug("Creating runtime cache data")
-        self._storage = {}
+    """
+    RuntimeCache for temporary data saving and opening during runtime
+    """
 
-    def put(self, name, data):
+    def __init__(self, app):
+        LOGGER.debug("Creating runtime cache data")
+        self._app = app
+        self._storage = {
+            "SHARED": None,
+            "INTERRUPT": None
+        }
+
+    def cleanup_cache(self, module):
+        if module:
+            del self._storage[module.name]
+
+    def set(self, name, data, module=None, interrupt_call=False):
+        allowed_names = ["SHARED"]
         if name in self._storage:
             LOGGER.info(f"Wiping old data in runtime cache: {name}")
             del self._storage[name]
-        self._storage[name] = bytes(data)
+        if module:
+            allowed_names.append(module.name)
+        if interrupt_call:
+            allowed_names.append("INTERRUPT")
+        if name in allowed_names:
+            self._storage[name] = data
 
-    def get(self, name):
+    def get(self, name, module=None, interrupt_call=False):
         LOGGER.debug(f"Getting runtime cache by name {name}")
-        if name in self._storage:
+        allowed_names = ["SHARED"]
+        if module:
+            allowed_names.append(module.name)
+        if interrupt_call:
+            allowed_names.append("INTERRUPT")
+        if name in self._storage and name in allowed_names:
             return self._storage[name]
 
     def clear(self):
@@ -39,15 +61,28 @@ class RuntimeCache:
     def size(self):
         return len(self._storage)
 
-    def remove(self, name):
+    def remove(self, name, module=None):
         LOGGER.debug(f"Removing runtime cache by name {name}")
-        if name in self._storage:
-            return self._storage.pop(name)
+        denied_names = ["SHARED", "INTERRUPT"]
+        allowed_names = []
+        if not module:
+            if name not in ["SHARED", "INTERRUPT"]:
+                return self._storage.pop(name)
+        else:
+            if name == module.name:
+                return self._storage.pop(name)
 
 
 def put_request_cache(request, data):
+    """
+    Puts request to cache
+    :param request: request string
+    :param data: response data
+    """
     if isinstance(data, bytes):
         data = data.decode("utf-8")
+    else:
+        data = str(data)
     maxnumber = 0
     for number in os.listdir(REQUEST_CACHE):
         maxnumber = max(int(number), maxnumber)
@@ -67,7 +102,9 @@ def put_request_cache(request, data):
 
 
 def find_request(request):
-    # Returns a filename
+    """
+    Returns a filename where storea response by passed request
+    """
     listdir = list(map(int, filter(lambda x: x.isdigit(), os.listdir(REQUEST_CACHE))))
     listdir.sort(reverse=True)
     for number in listdir:
@@ -79,6 +116,12 @@ def find_request(request):
 
 
 def put_module_cache(module, filename, data: bytes):
+    """
+    Store module cache in specific file with byte data
+    :param module: module string name
+    :param filename: name for specific file
+    :param data: response data in bytes
+    """
     if isinstance(data, str):
         data = data.encode("utf-8")
     if not os.path.exists(os.path.join(PATH, module)):
@@ -125,11 +168,14 @@ def module_path(name):
 
 
 def cleanup():
+    """
+    Cleanup cache excluding ALLOWED_CACHE directory names
+    """
     for root, _, files in os.walk(PATH):
         for file in files:
             path = os.path.join(root, file)
             if os.path.basename in ALLOWED_CACHE \
-                or (os.path.basename(os.path.dirname(path)) in ALLOWED_CACHE):
+                    or (os.path.basename(os.path.dirname(path)) in ALLOWED_CACHE):
                 continue
             else:
                 try:
@@ -153,3 +199,7 @@ def remove_request_cached(request_addr):
     with open(path, "wb") as fobj:
         json.dump(fobj, data)
     LOGGER.debug(f"Removing {request_addr}")
+
+
+def get_shared_cache():
+    return os.path.join(DATA_PATH, "cache", "shared")

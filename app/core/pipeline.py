@@ -1,5 +1,5 @@
 import time
-from . import configs
+from . import appconfig
 from .logger import get_logger
 
 
@@ -17,7 +17,7 @@ class Pipeline:
     def __init__(self, cfg, **kwargs):
         LOGGER.debug("Creating pipeline object")
         self._cfg = cfg
-        self.DEFAULTS = self._cfg.absolute_cfg("DEFAULT_PIPELINE_SETTINGS")
+        self.DEFAULTS = self._cfg.absolute_cfg("PIPELINE")
         for key in kwargs:
             assert key in self.DEFAULTS
         self._config = dict(kwargs or self.DEFAULTS)
@@ -46,10 +46,11 @@ class Pipeline:
         self._packets = None
         self._c = 0
         self._maxc = 0
-        if configs.RESET_PIPECONFIG:
+        if appconfig.RESET_PIPECONFIG:
             self.reset_config()
 
-    def text_filter(self, text):
+    @staticmethod
+    def text_filter(text):
         allowed_chars = ["\n", "\r", "\t"]
         result = filter(lambda x: x.isprintable() or x in allowed_chars, text)
         return "".join(list(result)).replace("\\", "/")
@@ -57,6 +58,10 @@ class Pipeline:
     @property
     def packets_sent(self):
         return self._c
+    
+    @property
+    def source(self):
+        return self._source
 
     def reset_config(self):
         LOGGER.info("Reset configuration pipeline")
@@ -76,7 +81,6 @@ class Pipeline:
         if self._config["clear_text"]:
             data = self.text_filter(data)
         self._source = data
-        assert isinstance(data, str) or hasattr(data, "__iter__")
 
     def preprocess(self):
         if isinstance(self._source, str):
@@ -112,7 +116,7 @@ class Pipeline:
                 partnumber = f"{str(i + 2)}." if self._config["allow_part_number"] else ""
                 yield partnumber + source[end + partsmod2:end + partsmod]
 
-    def pregenerate_bytes(self, source, encoding=configs.DEFAULT_ENCODING):
+    def pregenerate_bytes(self, source, encoding=appconfig.DEFAULT_ENCODING):
         LOGGER.info("Inititalizing bytes pregenerator engine")
         ptr = 0
         i = 1
@@ -222,6 +226,12 @@ class Pipeline:
             self._limit_marker = False
         self._c += 1
         result = next(self._packets)
-        resultsize = len(result.encode(configs.DEFAULT_ENCODING))
+        resultsize = len(result.encode(appconfig.DEFAULT_ENCODING))
         LOGGER.debug("Rolled packet with length {} and size {} bytes".format(len(result), resultsize))
         return result
+
+    def is_specific_source(self):
+        return not(isinstance(self.source, str) \
+            or isinstance(self.source, list) \
+            or isinstance(self.source, tuple) \
+            or isinstance(self.source, dict))

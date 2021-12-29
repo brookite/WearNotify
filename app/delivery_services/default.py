@@ -1,4 +1,4 @@
-def send(ctx, packet):
+def send(packet):
     try:
         import androidhelper
         droid = androidhelper.Android()

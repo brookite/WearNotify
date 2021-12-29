@@ -5,18 +5,16 @@ import urllib.parse
 import os
 import json
 
-
 PORT = 6904
 app = None
-REQ = "<html><head><title>Mnemonic Server</title></head><body>Done! It's working</body>"
+REQ = "<html><head><title>Mnemonic Server</title></head><body>It is mnemonic server. Read the docs</body>"
 event = Event()
 uact = False
-
 
 httpd = None
 thread = None
 manip = None
-context = None
+ctx = None
 
 SETTINGS = {"MODE": 0x1}
 
@@ -60,7 +58,8 @@ class Manipulator:
     def app(self):
         return self._app
 
-    def numberroll(self):
+    @staticmethod
+    def numberroll():
         nums = list(map(str, range(1, 10))) + ["0", " ", "null"]
         cursor = 0
         while True:
@@ -116,7 +115,8 @@ class Manipulator:
             yield modulenames[cursor]
             cursor += 1
 
-    def reverse_numberroll(self):
+    @staticmethod
+    def reverse_numberroll():
         nums = ["null", " ", "0"] + list(map(str, range(10, 1, -1)))
         cursor = 0
         while True:
@@ -133,7 +133,8 @@ class Manipulator:
             yield self._history[cursor]
             cursor += 1
 
-    def special_symbols_roll(self):
+    @staticmethod
+    def special_symbols_roll():
         nums = list("@#,.!?;^&*()-+=_|/%<>:'{}[]")
         cursor = 0
         while True:
@@ -218,8 +219,8 @@ class Manipulator:
 
     def check_state(self):
         self.msg("User Action: {}; Input Context: {}; Selected mod: {}".format(self._user_action,
-            self._app.input_context.get(),
-            self._mods[self._selectedmod].__name__))
+                                                                               self._app.input_context.get(),
+                                                                               self._mods[self._selectedmod].__name__))
 
     def push(self):
         if self._user_action:
@@ -255,6 +256,7 @@ class Manipulator:
 
     def resetmods(self):
         self._mods = self._mods[:self._DEFAULT_MODS_COUNT]
+
     # ]
 
     def post(self):
@@ -327,6 +329,9 @@ def handler(request):
 
 
 def user_action():
+    """
+    User action for standard mnemonic
+    """
     global uact
     global event
     if not uact:
@@ -383,7 +388,7 @@ def server():
     httpd.serve_forever()
 
 
-def init(ctx):
+def init():
     global app, manip, thread
     manip = Manipulator(ctx)
     app = ctx.fork()
@@ -391,7 +396,7 @@ def init(ctx):
     thread.start()
 
 
-def exit(ctx):
+def exit():
     global thread, httpd
     if httpd and thread:
         httpd.shutdown()

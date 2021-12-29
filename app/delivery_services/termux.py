@@ -3,7 +3,7 @@ import time
 import json
 
 
-ids = None
+ids = []
 count = 1
 
 
@@ -11,13 +11,13 @@ def escape(string):
     return json.dumps(string, ensure_ascii=False)
 
 
-def init(ctx):
+def init():
     global ids
     ids = []
     os.system("termux-wake-lock")
 
 
-def send(ctx, packet):
+def send(packet):
     global count
     global ids
     template = "termux-notification -t s --priority high -c {} -i {}".format(escape(packet), count)
@@ -26,7 +26,7 @@ def send(ctx, packet):
     count += 1
 
 
-def finished(ctx, cnt):
+def finished(cnt):
     global ids
     time.sleep(1)
     for id in ids:
@@ -34,5 +34,5 @@ def finished(ctx, cnt):
     ids.clear()
 
 
-def exit(ctx):
+def exit():
     os.system("termux-wake-unlock")

@@ -1,39 +1,23 @@
 from common import App
 from time import sleep
-from core.configs import WELCOME_MSG, ABOUT_MSG, APP_NAME
+from core.appconfig import WELCOME_MSG, ABOUT_MSG, APP_NAME
 from core.logger import get_logger
 import sys
-import os
 
-inputservice = "default"
+
 bundle = None
 
 
-def cleanup(bundle):
-    bundle.clear_cache()
+def termux():
+    bundle.current_inputservice = "termux"
 
 
-def termux(bundle):
-    global inputservice
-    inputservice = "termux"
-
-
-def about(bundle):
+def about():
     bundle.send_message(ABOUT_MSG, user_action)
 
 
-def chmnemmod(bundle):
-    bundle.chmnemmod()
-
-
-QUIT = ["quit()", "quit", "exit", "exit(), logout()", "logout"]
+QUIT = ["quit()", "quit", "exit", "exit()"]
 END_USER_ACTION = '00'
-COMMANDS = {
-    "cleanup": cleanup,
-    "termux": termux,
-    "chmnem": chmnemmod,
-    "about": about
-}
 
 
 def user_action():
@@ -46,9 +30,11 @@ def user_action():
 
 
 def main():
-    global inputservice, bundle
+    global bundle
     logger = get_logger()
     bundle = App()
+    bundle.define_ooc_command("termux", termux)
+    bundle.define_ooc_command("about", about)
     print(WELCOME_MSG)
     sleep(0.1)
     while True:
@@ -56,18 +42,19 @@ def main():
             context = '' if not bundle.input_context.get() else \
                 f"({bundle.input_context.get()}) "
             print(context, end='')
-            req = bundle.collect_input(inputservice)
-            if inputservice != "default":
-                inputservice = "default"
+            req = bundle.collect_input(bundle.current_inputservice)
+            if bundle.current_inputservice != "default":
+                bundle.current_inputservice = "default"
             if not req:
                 print(f"[{APP_NAME}]: Empty request")
                 logger.debug("Got a empty request")
                 continue
             elif req.lower() in QUIT and not bundle.is_context_entered():
                 break
-            elif req.lower() in COMMANDS:
-                COMMANDS[req.lower()](bundle)
-                continue
+            elif bundle.check_ooc(req):
+                req = bundle.handle_ooc(req)
+                if not req:
+                    continue
             registry, request, additional = bundle.handle_input(req)
             response, module = bundle.delegate(registry, request, additional, user_action)
             if not response:
@@ -80,11 +67,9 @@ def main():
             req = ''
             break
         except Exception:
-            logger.exception(f"{APP_NAME} prompt exception:")
+            logger.exception(f"{APP_NAME} console exception:")
     logger.info("App is closing...")
     bundle.quit()
-    if req.lower() in QUIT and req.lower().startswith("logout") and os.name != "nt":
-        os.system("logout")
 
 
 if __name__ == '__main__':

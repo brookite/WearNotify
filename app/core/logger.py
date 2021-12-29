@@ -1,7 +1,7 @@
 import logging
 import logging.config
 import os
-from .configs import LOGGER_CONFIG, DATA_PATH
+from .appconfig import LOGGER_CONFIG, DATA_PATH
 
 
 LOG_PATH = os.path.join(DATA_PATH, "cache", "logs")

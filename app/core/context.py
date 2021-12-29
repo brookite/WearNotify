@@ -1,9 +1,8 @@
-from .configs import APP_VERSION, APP_VERSION_NAME
+from .appconfig import APP_VERSION, APP_VERSION_NAME, API_VERSION
 import os
 import json
 from . import cache
 from .import_service import load_py_from
-from . import errb
 from . import pipe
 from .logger import get_logger
 
@@ -18,14 +17,12 @@ class ModuleContext:
             self._extensions = app.extensions
             self._cfg = app.config
             self._runtimecache = app.runtime_cache
-            self._errb = app.errb
             self._app = app
             self._mnems = self._app.mnems
         else:
             self._extensions = None
             self._cfg = None
             self._runtimecache = None
-            self._errb = None
             self._app = app
             self._mnems = None
         self._builded_ext = {}
@@ -41,7 +38,7 @@ class ModuleContext:
     @current_user_action.setter
     def current_user_action(self, value):
         if callable(value):
-            return self._user_action
+            self._user_action = value
 
     def _load_mnems(self):
         if not self._module.path:
@@ -53,7 +50,7 @@ class ModuleContext:
                 for mnemonic in loaded:
                     self._custom_mnems[mnemonic] = loaded[mnemonic]
 
-    def get_mnenmoic(self, mnem, onlycustom=False):
+    def get_mnemonic(self, mnem, onlycustom=False):
         if mnem in self._mnems and not onlycustom:
             return self._mnems[mnem]
         elif mnem in self._custom_mnems:
@@ -70,6 +67,10 @@ class ModuleContext:
 
     def clear_mnemonics(self):
         self._custom_mnems.clear()
+
+    @staticmethod
+    def get_shared_cache():
+        return cache.get_shared_cache()
 
     def is_mnemonic(self, mnem):
         return mnem in self._mnems or mnem in self._mnems
@@ -88,6 +89,10 @@ class ModuleContext:
     @property
     def version_array(self):
         return APP_VERSION
+
+    @property
+    def api_version(self):
+        return API_VERSION
 
     def internal_path(self, path=None):
         LOGGER.info("Resolving internal path: %s" % path)
@@ -112,20 +117,8 @@ class ModuleContext:
             self._builded_ext[name] = self._extensions[name].build(self._module)
         return self._builded_ext[name]
 
-    def send_errb(self, port, data: bytes):
-        LOGGER.info("Sending to ERRB port %s" % port)
-        sender, _ = errb.port_handler(port, self._errb)
-        if sender:
-            errb.post_sender(sender, data)
-
     def logger(self):
         return self._logger
-
-    def recieve_errb(self, port):
-        LOGGER.info("Recieveing from ERRB port %s" % port)
-        _, reciever = errb.port_handler(port, self._errb)
-        if reciever:
-            return errb.recieve(reciever)
 
     def put_cache(self, filename, data):
         LOGGER.info("Adding new cache %s" % filename)
@@ -134,16 +127,16 @@ class ModuleContext:
         return cache.put_module_cache(self._module.name, filename, data)
 
     def put_tempdata(self, name, data):
-        self._runtimecache.put(name, data)
+        self._runtimecache.put(name, data, module=self._module)
 
     def get_tempdata(self, name):
-        return self._runtimecache.get(name)
+        return self._runtimecache.get(name, module=self._module)
 
     def is_cached_tempdata(self, name):
         return self._runtimecache.is_cached(name)
 
     def remove_tempdata(self, name):
-        self._runtimecache.remove(name)
+        self._runtimecache.remove(name, module=self._module)
 
     def get_cached(self, filename):
         LOGGER.info("Getting cache %s" % filename)
@@ -170,11 +163,6 @@ class ModuleContext:
         os.chdir(prevcwd)
         return module
 
-    def check_errb(self, port):
-        LOGGER.info("Checking port availability: %s" % port)
-        s, r = errb.port_handler(port, self._errb)
-        return s is not None or r is not None
-
     def absolute_cfg(self, name):
         return self._cfg.absolute_cfg(name, module=self._module)
 
@@ -193,7 +181,7 @@ class ModuleContext:
 
     def mnem_manipulator(self):
         if "mnemonic_server" in self._app.input_services:
-            module = self._app.input_services["mnemonic_server"]._nativemodule
+            module = self._app.input_services["mnemonic_server"].native_module
             if hasattr(module, "manip"):
                 if module.manip:
                     return module.manip
@@ -205,7 +193,6 @@ class ExtensionContext:
         self._extension = extension
         self._extensions = app.extensions
         self._app = app
-        self._errb = app.errb
         self._cfg = app.config
         self._runtimecache = app.runtime_cache
         self._builded_ext = {}
@@ -225,6 +212,10 @@ class ExtensionContext:
     @property
     def app_version(self):
         return APP_VERSION_NAME
+
+    @property
+    def api_version(self):
+        return API_VERSION
 
     @property
     def version_array(self):
@@ -271,23 +262,6 @@ class ExtensionContext:
         module = load_py_from(os.path.join(self._extension.path, module_name))
         return module
 
-    def send_errb(self, port, data: bytes):
-        LOGGER.info("Sending ERRB port %s" % port)
-        sender, _ = errb.port_handler(port, self._errb)
-        if sender:
-            errb.post_sender(sender, data)
-
-    def recieve_errb(self, port):
-        LOGGER.info("Recieveing from ERRB port %s" % port)
-        _, reciever = errb.port_handler(port, self._errb)
-        if reciever:
-            return errb.recieve(reciever)
-
-    def check_errb(self, port):
-        LOGGER.info("Checking port availability: %s" % port)
-        s, r = errb.port_handler(port, self._errb)
-        return s is not None or r is not None
-
     def put_cache(self, filename, data):
         LOGGER.info("Adding new cache %s" % filename)
         if isinstance(data, str):
@@ -312,16 +286,16 @@ class ExtensionContext:
         cache.remove_module_cache(self._extension.name, filename)
 
     def put_tempdata(self, name, data):
-        self._runtimecache.put(name, data)
+        self._runtimecache.set(name, data, module=self.module)
 
     def get_tempdata(self, name):
-        return self._runtimecache.get(name)
+        return self._runtimecache.get(name, module=self.module)
 
     def is_cached_tempdata(self, name):
         return self._runtimecache.is_cached(name)
 
     def remove_tempdata(self, name):
-        return self._runtimecache.remove(name)
+        return self._runtimecache.remove(name, module=self.module)
 
     def absolute_cfg(self, name):
         return self._cfg.absolute_cfg(name, module=self._extension)
@@ -381,7 +355,7 @@ class InputContext:
 class InputServiceContext:
     def __init__(self, inputservice, app):
         self._inputservice = inputservice
-        self._nativemodule = inputservice._native_module
+        self._nativemodule = inputservice.native_module
         self._runtimecache = app.runtime_cache
         self._extensions = app.extensions
         self._builded_ext = {}
@@ -400,10 +374,10 @@ class InputServiceContext:
             if name not in self._extensions:
                 LOGGER.error(f"Extension {name} wasn't found")
                 return None
-            self._builded_ext[name] = self._extensions[name].build(self._module)
+            self._builded_ext[name] = self._extensions[name].build(self._inputservice)
         return self._builded_ext[name]
 
-    def get_mnenmoic(self, mnem, onlycustom=False):
+    def get_mnemonic(self, mnem, onlycustom=False):
         if mnem in self._mnems and not onlycustom:
             return self._mnems[mnem]
         elif mnem in self._custom_mnems:
@@ -411,32 +385,23 @@ class InputServiceContext:
         else:
             return None
 
+    @staticmethod
+    def get_shared_cache():
+        return cache.get_shared_cache()
+
     @property
     def app_version(self):
         return APP_VERSION_NAME
+
+    @property
+    def api_version(self):
+        return API_VERSION
 
     def pipe(self, name):
         return pipe.Pipe(name, self._app)
 
     def logger(self):
         return self._logger
-
-    def check_errb(self, port):
-        LOGGER.info("Checking port availability: %s" % port)
-        s, r = errb.port_handler(port, self._errb)
-        return s is not None or r is not None
-
-    def send_errb(self, port, data: bytes):
-        LOGGER.info("Sending to ERRB port %s" % port)
-        sender, _ = errb.port_handler(port, self._errb)
-        if sender:
-            errb.post_sender(sender, data)
-
-    def recieve_errb(self, port):
-        LOGGER.info("Recieveing from ERRB port %s" % port)
-        _, reciever = errb.port_handler(port, self._errb)
-        if reciever:
-            return errb.recieve(reciever)
 
     def put_cache(self, filename, data):
         LOGGER.info("Adding new cache %s" % filename)
@@ -445,16 +410,16 @@ class InputServiceContext:
         return cache.put_module_cache(self._nativemodule.__name__, filename, data)
 
     def put_tempdata(self, name, data):
-        self._runtimecache.put(name, data)
+        self._runtimecache.put(name, data, module=self._inputservice)
 
     def get_tempdata(self, name):
-        return self._runtimecache.get(name)
+        return self._runtimecache.get(name, module=self._inputservice)
 
     def is_cached_tempdata(self, name):
         return self._runtimecache.is_cached(name)
 
     def remove_tempdata(self, name):
-        self._runtimecache.remove(name)
+        self._runtimecache.remove(name, module=self._inputservice)
 
     def get_cached(self, filename):
         LOGGER.info("Getting cache %s" % filename)
@@ -533,5 +498,91 @@ class InputServiceContext:
 
 
 class DeliveryServiceContext:
-    def __init__(self, nativemodule):
+    def __init__(self, delservice, nativemodule, app):
         self._nativemodule = nativemodule
+        self._delservice = delservice
+        self._extensions = app.extensions
+        self._builded_ext = {}
+        self._app = app
+        self._runtimecache = app.runtime_cache
+        self._cfg = app.config
+
+    @property
+    def app_version(self):
+        return APP_VERSION_NAME
+
+    @property
+    def api_version(self):
+        return API_VERSION
+
+    def extension(self, name):
+        LOGGER.info("Using extension %s" % name)
+        if name not in self._builded_ext:
+            if name not in self._extensions:
+                LOGGER.error(f"Extension {name} wasn't found")
+                return None
+            self._builded_ext[name] = self._extensions[name].build(self._delservice)
+        return self._builded_ext[name]
+
+    def internal_path(self, path=None):
+        LOGGER.info("Resolving internal path: %s" % path)
+        if path is None:
+            return self._delservice.path
+        else:
+            return os.path.join(self._delservice.path, path)
+
+    def absolute_cfg(self, name):
+        return self._cfg.absolute_cfg(name, module=self._nativemodule)
+
+    def relative_cfg(self, name):
+        return self._cfg.relative_cfg(name, self._nativemodule)
+
+    def put_config(self, name, value):
+        return self._cfg.put(name, value, module=self._nativemodule)
+
+    @property
+    def version_array(self):
+        return APP_VERSION
+
+    def put_cache(self, filename, data):
+        LOGGER.info("Adding new cache %s" % filename)
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        return cache.put_module_cache(self._nativemodule.__name__, filename, data)
+
+    def put_tempdata(self, name, data):
+        self._runtimecache.put(name, data, module=self._delservice)
+
+    def get_tempdata(self, name):
+        return self._runtimecache.get(name, module=self._delservice)
+
+    def is_cached_tempdata(self, name):
+        return self._runtimecache.is_cached(name)
+
+    def remove_tempdata(self, name):
+        self._runtimecache.remove(name, module=self._delservice)
+
+    @staticmethod
+    def get_shared_cache():
+        return cache.get_shared_cache()
+
+    def get_cached(self, filename):
+        LOGGER.info("Getting cache %s" % filename)
+        return cache.get_module_cached(self._nativemodule.__name__, filename)
+
+    def get_cache_path(self, filename=None):
+        pth = cache.module_path(self._nativemodule.__name__)
+        if filename:
+            return os.path.join(pth, filename)
+        return pth
+
+    def is_cached(self, filename):
+        return cache.is_module_cached(self._nativemodule.__name__, filename)
+
+    def remove_cache(self, filename):
+        LOGGER.info("Removing module cache: %s" % filename)
+        cache.remove_module_cache(self._nativemodule.__name__, filename)
+
+
+
+

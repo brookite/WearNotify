@@ -1,6 +1,6 @@
 import os
 import json
-from .configs import APP_PATH, DATA_PATH, DEFAULT_ENCODING
+from .appconfig import APP_PATH, DATA_PATH, DEFAULT_ENCODING
 from .logger import get_logger
 from .import_service import pip_install
 
@@ -18,7 +18,8 @@ def init():
         os.path.join(DATA_PATH, "modules"),
         os.path.join(DATA_PATH, "errb", "sockets"),
         os.path.join(DATA_PATH, "cache"),
-        os.path.join(DATA_PATH, "cache", "requests")
+        os.path.join(DATA_PATH, "cache", "requests"),
+        os.path.join(DATA_PATH, "cache", "shared")
     ]
     files = {
         os.path.join(DATA_PATH, "errb", "alias.json"): '{}',
@@ -62,24 +63,6 @@ def lookup_services_path(service_name):
     return paths
 
 
-def lookup_errb():
-    errb = os.path.join(DATA_PATH, "errb")
-    aliases_path = os.path.join(errb, "alias.json")
-    ports_path = os.path.join(errb, "port.json")
-    result = {}
-    jobj = read_json(ports_path)
-    for key in jobj:
-        filepath = os.path.join(errb, "sockets", jobj[key])
-        if not filepath.endswith(".py"):
-            filepath += ".py"
-        if os.path.isfile(filepath):
-            result[int(key)] = {"file": filepath}
-    jobj = read_json(aliases_path)
-    for key in jobj:
-        result[int(key)]["alias"] = jobj[key]
-    return result
-
-
 def lookup_modules():
     return lookup_plugins("modules")
 
@@ -119,6 +102,14 @@ def get_requirements(file):
         return req
     else:
         return []
+
+
+def get_ooc_commands():
+    path = os.path.join(DATA_PATH, "commands.json")
+    if os.path.exists(path):
+        return read_json(path)
+    else:
+        return {}
 
 
 def satisfact_requirements(requirements):

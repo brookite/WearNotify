@@ -1,6 +1,6 @@
 import json
 
-from . import configs
+from . import appconfig
 import os.path
 from .logger import get_logger
 
@@ -9,10 +9,13 @@ LOGGER = get_logger("config")
 
 
 class Config:
+    """
+    App configuration object
+    """
     def __init__(self):
         LOGGER.info("Creating config object")
-        self._dyn = {}
-        self._static = {}
+        self._dyn = {}  # dynamic, changeable configs
+        self._static = {}  # static configs, constant config
 
     def _put(self, name, value, module="globals", dest="dyn"):
         LOGGER.debug(f"Internal method call: adding {name}={value} to module {module} in {dest}")
@@ -40,7 +43,7 @@ class Config:
 
     def load_configfile(self):
         LOGGER.info("Loading configs from configuration file")
-        path = os.path.join(configs.DATA_PATH, "config.txt")
+        path = os.path.join(appconfig.DATA_PATH, "config.txt")
         if not os.path.exists(path):
             LOGGER.info("config.txt wasn't found")
             return
@@ -54,15 +57,18 @@ class Config:
                 self.put(name, self._convert(value), None)
 
     def load(self, app):
+        """
+        Load configuration from application units
+        """
         modules, extensions, inputservices = app.modules, app.extensions, app.input_services
         LOGGER.info("Loading configs...")
         self._dyn.clear()
         self._static.clear()
-        for name in configs.ALLOWED_FOR_CHANGE:
-            self._put(name, configs.__getattribute__(name))
-        for name in dir(configs):
-            if name not in configs.ALLOWED_FOR_CHANGE and not name.startswith("_"):
-                self._put(name, configs.__getattribute__(name), "globals", "static")
+        for name in appconfig.ALLOWED_FOR_CHANGE:
+            self._put(name, appconfig.__getattribute__(name))
+        for name in dir(appconfig):
+            if name not in appconfig.ALLOWED_FOR_CHANGE and not name.startswith("_"):
+                self._put(name, appconfig.__getattribute__(name), "globals", "static")
         for name in modules:
             module = modules[name]
             cfg = module.configs
@@ -96,6 +102,9 @@ class Config:
         self.load_configfile()
 
     def route(self, abscfg):
+        """
+        Find absolute config without access restrictions
+        """
         LOGGER.info(f"Rounting configuration: {abscfg}")
         path = self.sep_namespace(abscfg)
         tmp = self._static
@@ -128,7 +137,7 @@ class Config:
 
     def absolute_cfg(self, name, module=None):
         LOGGER.info(f"Getting absolute configuration {name} for module={module}")
-        if name not in dir(configs):
+        if name not in dir(appconfig):
             if name in list(self._dyn.keys()) and name in list(self._static.keys()):
                 temp = dict(self._dyn[name])
                 temp.update(self._static[name])

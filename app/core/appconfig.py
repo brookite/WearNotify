@@ -17,16 +17,15 @@ def check_workdir():
 
 check_workdir()
 
-
-DEFAULT_PIPELINE_SETTINGS = {
-    # DON'T DELETE ANY KEYS IN THIS DICT. ELSE PIPELINE WON'T CREATED
+PIPELINE = {
+    # DON'T DELETE ANY KEYS IN THIS DICT. ELSE PIPELINE WON'T BE CREATED
     "start": None,
     "stop": None,
     "step": -1,
     "max_packet_length": 126,
-    "allow_part_number": False, #it's may cause errors in symbol limit type with very huge packets count
+    "allow_part_number": False,  # it may cause errors in symbol limit type with very huge packets count
     "limit_type": "symbol",
-    "clear_text": False, # it's slows app
+    "clear_text": False,  # it's slows app
     "packets_count": 16,
     "packet_delay": 1250,
     "initial_delay": 800,
@@ -45,7 +44,9 @@ DATA_PATH = os.path.abspath("../data")
 DEFAULT_ENCODING = "utf-8"
 DEFAULT_MNEMONIC_MODE = 0x1
 MAX_REQUEST_CACHE_SIZE = 262144
+DEFAULT_INPUT_SERVICE = "default"
 RESET_PIPECONFIG = False
+ONLY_STRING_IO_DATA = False
 PIPELINE_ENGINE = "DANDELION"
 LOG_FILE = os.path.join(DATA_PATH, "cache", "logs", format_filename())
 
@@ -86,6 +87,6 @@ ALLOWED_FOR_CHANGE = [
     "DEFAULT_ENCODING",
     "MAX_REQUEST_CACHE_SIZE",
     "RESET_PIPECONFIG",
-    "DEFAULT_PIPELINE_SETTINGS",
+    "PIPELINE",
     "PIPELINE_ENGINE"
 ]
