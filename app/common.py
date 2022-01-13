@@ -41,7 +41,8 @@ class App:
         self._current_user_action = None
         self.ooc = {
             "cleanup": self.clear_cache,
-            "chmnemmod": self.chmnemmod
+            "chmnemmod": self.chmnemmod,
+            "forcecleanup": self.force_clear_cache
         }  # out of context commands
         self.current_inputservice = self.config.absolute_cfg("default_inputservice")
         for command, value in get_ooc_commands():
@@ -89,7 +90,7 @@ class App:
                 self._mnemmode = 0x1
             self.config.put("mnemonic_server.mode", self._mnemmode)
 
-    def collect_input(self, service=None, *args):
+    def collect_input(self, service=None, *args, **kwargs):
         """
         Collecting input from input services. First step of request handling
         :param service: if specified - uses only this input service
@@ -99,12 +100,12 @@ class App:
             self.logger.debug(f"Collecting input from all services")
             for service in self.input_services:
                 self.logger.debug(f"Collecting input from {service}")
-                return self.input_services[service].raw_input(*args)
+                return self.input_services[service].raw_input(*args, **kwargs)
         else:
             self.logger.debug(f"Collecting input from service {service}")
             if service in self.input_services:
                 self.logger.debug(f"Input service {service} has found")
-                return self.input_services[service].raw_input(*args)
+                return self.input_services[service].raw_input(*args, **kwargs)
             else:
                 self.logger.error(f"Input service ({service}) wasn't found")
                 return None
@@ -127,6 +128,10 @@ class App:
     def clear_cache(self):
         self.logger.debug("Clearing all cache...")
         cleanup()
+
+    def force_clear_cache(self):
+        self.logger.debug("Force clearing all cache...")
+        cleanup(True)
 
     def delegate(self, reg, request, user_action, deny_cache=False, ooc=False):
         """

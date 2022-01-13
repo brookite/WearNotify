@@ -2,9 +2,10 @@ import subprocess as sub
 import json
 
 
-def raw_input(ctx):
+def raw_input(speech=False):
     try:
-        s = sub.run("termux-dialog", stdout=sub.PIPE)
+        executable = "text" if not speech else "speech"
+        s = sub.run("termux-dialog " + executable, stdout=sub.PIPE)
         if s.stdout:
             result = json.loads(s.stdout.decode("utf-8"))
             if result["text"]:

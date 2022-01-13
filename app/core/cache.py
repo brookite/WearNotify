@@ -6,7 +6,6 @@ from .storage import read_json, write_json
 from .logger import get_logger
 
 LOGGER = get_logger("cache")
-ALLOWED_CACHE = ["fdel", "mnemonic_server"]
 
 PATH = os.path.join(DATA_PATH, "cache")
 REQUEST_CACHE = os.path.join(PATH, "requests")
@@ -167,15 +166,15 @@ def module_path(name):
     return os.path.join(PATH, name)
 
 
-def cleanup():
+def cleanup(force=False):
     """
     Cleanup cache excluding ALLOWED_CACHE directory names
     """
     for root, _, files in os.walk(PATH):
         for file in files:
             path = os.path.join(root, file)
-            if os.path.basename in ALLOWED_CACHE \
-                    or (os.path.basename(os.path.dirname(path)) in ALLOWED_CACHE):
+            if (os.path.basename in ALLOWED_CACHE \
+                    or (os.path.basename(os.path.dirname(path)) in ALLOWED_CACHE)) and not force:
                 continue
             else:
                 try:
@@ -203,3 +202,27 @@ def remove_request_cached(request_addr):
 
 def get_shared_cache():
     return os.path.join(DATA_PATH, "cache", "shared")
+
+
+def load_allowed_cache():
+    pth = os.path.join(DATA_PATH, "allowed_cache.json")
+    if os.path.exists(pth):
+        return list(set(read_json(pth) + ["fdel", "mnemonic_server"]))
+    else:
+        return ["fdel", "mnemonic_server"]
+
+
+def put_allowed_cache(modulename):
+    pth = os.path.join(DATA_PATH, "allowed_cache.json")
+    if modulename not in ALLOWED_CACHE:
+        ALLOWED_CACHE.append(modulename)
+        write_json(pth, ALLOWED_CACHE)
+
+def remove_allowed_cache(modulename):
+    pth = os.path.join(DATA_PATH, "allowed_cache.json")
+    if modulename in ALLOWED_CACHE:
+        ALLOWED_CACHE.remove(modulename)
+        write_json(pth, ALLOWED_CACHE)
+
+
+ALLOWED_CACHE = load_allowed_cache()

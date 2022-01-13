@@ -12,11 +12,15 @@ def termux():
     bundle.current_inputservice = "termux"
 
 
+def speak():
+    bundle.collect_input("termux", speech=True)
+
+
 def about():
     bundle.send_message(ABOUT_MSG, user_action)
 
 
-QUIT = ["quit()", "quit", "exit", "exit()"]
+QUIT = ["quit()", "quit", "exit", "exit()", "logout"]
 END_USER_ACTION = '00'
 
 
@@ -34,6 +38,7 @@ def main():
     logger = get_logger()
     bundle = App()
     bundle.define_ooc_command("termux", termux)
+    bundle.define_ooc_command("speak", speak)
     bundle.define_ooc_command("about", about)
     print(WELCOME_MSG)
     sleep(0.1)

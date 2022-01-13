@@ -61,6 +61,12 @@ class ModuleContext:
     def fork(self):
         return self._app
 
+    def set_cleanable_cache(self, state=True):
+        if not state:
+            cache.put_allowed_cache(self._module.name)
+        else:
+            cache.remove_allowed_cache(self._module.name)
+
     @property
     def mnemonics(self):
         return self._mnems, self._custom_mnems
@@ -208,6 +214,12 @@ class ExtensionContext:
 
     def pipe(self, name):
         return pipe.Pipe(name, self._app)
+
+    def set_cleanable_cache(self, state=True):
+        if not state:
+            cache.put_allowed_cache(self._extension.name)
+        else:
+            cache.remove_allowed_cache(self._extension.name)
 
     @property
     def app_version(self):
@@ -365,6 +377,12 @@ class InputServiceContext:
         self._custom_mnems = {}
         self._logger = get_logger(f"{self._nativemodule.__name__}")
 
+    def set_cleanable_cache(self, state=True):
+        if not state:
+            cache.put_allowed_cache(self._inputservice.name)
+        else:
+            cache.remove_allowed_cache(self._inputservice.name)
+
     def fork(self):
         return self._app
 
@@ -514,6 +532,12 @@ class DeliveryServiceContext:
     @property
     def api_version(self):
         return API_VERSION
+
+    def set_cleanable_cache(self, state=True):
+        if not state:
+            cache.put_allowed_cache(self._delservice.name)
+        else:
+            cache.remove_allowed_cache(self._delservice.name)
 
     def extension(self, name):
         LOGGER.info("Using extension %s" % name)
