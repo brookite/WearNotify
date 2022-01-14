@@ -13,7 +13,17 @@ def termux():
 
 
 def speak():
-    bundle.collect_input("termux", speech=True)
+    bundle.process(bundle.collect_input("termux", speech=True), user_action)
+
+
+def speech_output():
+    for delserv in bundle.delivery_services:
+        if delserv.name == "termux":
+            termux = delserv
+    if not termux.native_module.allow_speech:
+        termux.native_module.allow_speech = True
+    else:
+        termux.native_module.allow_speech = False
 
 
 def about():
@@ -39,6 +49,7 @@ def main():
     bundle = App()
     bundle.define_ooc_command("termux", termux)
     bundle.define_ooc_command("speak", speak)
+    bundle.define_ooc_command("speechon", speech_output)
     bundle.define_ooc_command("about", about)
     print(WELCOME_MSG)
     sleep(0.1)
@@ -57,9 +68,7 @@ def main():
             elif req.lower() in QUIT and not bundle.is_context_entered():
                 break
             elif bundle.check_ooc(req):
-                req = bundle.handle_ooc(req)
-                if not req:
-                    continue
+                continue
             registry, request, additional = bundle.handle_input(req)
             response, module = bundle.delegate(registry, request, additional, user_action)
             if not response:

@@ -214,8 +214,8 @@ class InputService:
     def init(self):
         return _module_call(self._native_module, "init")
 
-    def raw_input(self, *args):
-        return _module_call(self._native_module, "raw_input", *args)
+    def raw_input(self, *args, **kwargs):
+        return _module_call(self._native_module, "raw_input", *args, **kwargs)
 
     def user_action(self, *args):
         return _module_call(self._native_module, "user_action", *args)

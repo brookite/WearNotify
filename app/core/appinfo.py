@@ -1,9 +1,9 @@
 APP_NAME = "WearNotify"
-APP_VERSION = [2, 1, 0, 4]
+APP_VERSION = [2, 1, 0, 5]
 APP_BRANCH = "staging"
 MAINTAINER = "brookit"
-APP_VERSION_NAME = "2.1 alpha 4"
-BUILD_INFO = "build 130122"
+APP_VERSION_NAME = "2.1 beta 1"
+BUILD_INFO = "build 140122"
 BUILD_STATUS = "public"
 API_VERSION = 21
 

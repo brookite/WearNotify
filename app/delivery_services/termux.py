@@ -1,8 +1,6 @@
 import os
 import time
 import json
-import subprocess as sub
-
 
 ids = []
 count = 1
@@ -42,6 +40,7 @@ def finished(cnt):
         pitch = speech_params["pitch"]
         rate = speech_params["rate"]
         stream = speech_params["stream"]
+        textbuffer = escape(textbuffer)
         speech_template = f"termux-tts-speak -p {pitch} -r {rate} -s {stream} {textbuffer}"
         os.system(speech_template)
     for id in ids:

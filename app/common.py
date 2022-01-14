@@ -294,13 +294,14 @@ class App:
     def check_ooc(self, command):
         if command in self.ooc:
             if callable(self.ooc[command]):
-                self.ooc[command]()
+                response = self.ooc[command]()
+                self.runtime_cache.set("INTERRUPT", response)
                 return True
             else:
                 registry, request, additional = self.handle_input(command, False)
                 response, module = self.delegate(registry, command, self._current_user_action,
                                                  True,
                                                  ooc=True)
-                #TODO: add storing returned value
+                self.runtime_cache.set("INTERRUPT", response)
                 return True
 
