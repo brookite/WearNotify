@@ -30,14 +30,14 @@ class RuntimeCache:
 
     def set(self, name, data, module=None, interrupt_call=False):
         allowed_names = ["SHARED"]
-        if name in self._storage:
-            LOGGER.info(f"Wiping old data in runtime cache: {name}")
-            del self._storage[name]
         if module:
             allowed_names.append(module.name)
         if interrupt_call:
             allowed_names.append("INTERRUPT")
         if name in allowed_names:
+            if name in self._storage:
+                LOGGER.info(f"Wiping old data in runtime cache: {name}")
+                del self._storage[name]
             self._storage[name] = data
 
     def get(self, name, module=None, interrupt_call=False):
@@ -63,12 +63,11 @@ class RuntimeCache:
     def remove(self, name, module=None):
         LOGGER.debug(f"Removing runtime cache by name {name}")
         denied_names = ["SHARED", "INTERRUPT"]
-        allowed_names = []
         if not module:
-            if name not in ["SHARED", "INTERRUPT"]:
+            if name not in denied_names and name in self._storage:
                 return self._storage.pop(name)
         else:
-            if name == module.name:
+            if name == module.name and name in self._storage:
                 return self._storage.pop(name)
 
 

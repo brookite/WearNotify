@@ -43,6 +43,7 @@ APP_PATH = os.path.abspath("./")
 DATA_PATH = os.path.abspath("../data")
 DEFAULT_ENCODING = "utf-8"
 DEFAULT_MNEMONIC_MODE = 0x1
+ISOLATED_MODULE = False
 MAX_REQUEST_CACHE_SIZE = 262144
 DEFAULT_INPUT_SERVICE = "default"
 RESET_PIPECONFIG = False

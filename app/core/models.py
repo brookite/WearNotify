@@ -1,4 +1,4 @@
-from . import import_service
+from . import import_service, appinfo
 from . import context as ctx
 import os
 from .logger import get_logger
@@ -6,6 +6,22 @@ from .appconfig import DEFAULT_MODULE_CONFIG
 
 
 LOGGER = get_logger("objects")
+
+
+def put_if_not_present(dct, key, value):
+    if key not in dct:
+        dct[key] = value
+
+
+def _add_default_settings(object, result):
+    put_if_not_present(result, "NAME", object.name)
+    put_if_not_present(result, "VERSION", "1.0")
+    put_if_not_present(result, "BUILD", 10)
+    put_if_not_present(result, "DEPENDENCIES", [])
+    put_if_not_present(result, "DEPENDENCIES_PY", [])
+    put_if_not_present(result, "MINIMAL_API_VERSION", 21)
+    put_if_not_present(result, "ISOLATED_MODULE", False)
+    put_if_not_present(result, "TARGET_API_VERSION", appinfo.API_VERSION)
 
 
 def _module_attr(module, attr):
@@ -104,12 +120,11 @@ class Module:
             or _module_attr(self._native_module, "MANIFEST")
         if result is None:
             result = {}
-        if "NOCACHE" not in result:
-            result["NOCACHE"] = True
-        if "ENTER_CONTEXT" not in result:
-            result["ENTER_CONTEXT"] = False
-        if "QUIT_COMMANDS" not in result:
-            result["QUIT_COMMANDS"] = ["quit", "exit", "exit()", "quit()"]
+        put_if_not_present(result, "NOCACHE", True)
+        put_if_not_present(result, "ENTER_CONTEXT", False)
+        put_if_not_present(result, "QUIT_COMMANDS", ["quit", "exit", "exit()", "quit()"])
+
+        _add_default_settings(self, result)
         return result
 
 
@@ -131,6 +146,7 @@ class DeliveryService:
                  or _module_attr(self._native_module, "MANIFEST")
         if result is None:
             result = {}
+        _add_default_settings(self, result)
         return result
 
     @property
@@ -202,6 +218,7 @@ class InputService:
                  or _module_attr(self._native_module, "MANIFEST")
         if result is None:
             result = {}
+        _add_default_settings(self, result)
         return result
 
     def help(self, *args):
@@ -234,8 +251,12 @@ class ExtensionInfo:
     def build(self, module):
         path = os.path.join(self._path, "__init__.py")
         native_module = import_service.load_py_from(path)
-        return Extension(self._name, module, native_module, self._path,
-                         self._app)
+        extension = Extension(self._name, module, native_module, self._path,
+                              self._app)
+        if not self._app.config.relative_cfg("isolated_module", extension):
+            return extension
+        else:
+            raise PermissionError("Specified extension is isolated")
 
 
 class Extension:
@@ -282,6 +303,7 @@ class Extension:
                  or _module_attr(self._native_module, "MANIFEST")
         if result is None:
             result = {}
+        _add_default_settings(self, result)
         return result
 
     def __getattr__(self, attr):

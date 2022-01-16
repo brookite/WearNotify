@@ -255,9 +255,9 @@ class ExtensionContext:
     def module_path(self, path=None):
         LOGGER.info("Resolving module path: %s" % path)
         if path is None:
-            return self._extension.path
+            return self._module.path
         else:
-            return os.path.join(self._extension.path, path)
+            return os.path.join(self._module.path, path)
 
     def import_submodule_by_path(self, path):
         LOGGER.info("Importing submodule: %s" % path)

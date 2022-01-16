@@ -45,7 +45,7 @@ class App:
             "forcecleanup": self.force_clear_cache
         }  # out of context commands
         self.current_inputservice = self.config.absolute_cfg("default_inputservice")
-        for command, value in get_ooc_commands():
+        for command, value in get_ooc_commands().items():
             self.define_ooc_command(command, value)
 
     @property
@@ -165,6 +165,8 @@ class App:
                 self.logger.info("Got response from module")
                 if not module.configs["NOCACHE"] and response and full_request:
                     put_request_cache(full_request, response)
+                if module != self.input_context.module:
+                    self.runtime_cache.remove(module.name)
                 return response, module
             else:
                 self.logger.debug(f"Request {request} is cached")
@@ -298,10 +300,10 @@ class App:
                 self.runtime_cache.set("INTERRUPT", response)
                 return True
             else:
-                registry, request, additional = self.handle_input(command, False)
+                registry, request, additional = self.handle_input(self.ooc[command], False)
                 response, module = self.delegate(registry, command, self._current_user_action,
                                                  True,
                                                  ooc=True)
-                self.runtime_cache.set("INTERRUPT", response)
+                self.runtime_cache.set("INTERRUPT", response, module=module, interrupt_call=True)
                 return True
 

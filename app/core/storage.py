@@ -73,13 +73,16 @@ def lookup_extensions():
 
 def lookup_plugins(plugin_type):
     result = {}
-    modules = os.path.join(DATA_PATH, plugin_type)
-    for path in os.listdir(modules):
-        pth = os.path.join(modules, path)
-        if os.path.isdir(pth):
-            initfile = os.path.join(pth, "__init__.py")
-            if os.path.exists(initfile):
-                result[os.path.basename(pth)] = os.path.abspath(pth)
+    data_modules = os.path.join(DATA_PATH, plugin_type)
+    app_modules = os.path.join(APP_PATH, plugin_type)
+    for modules in [app_modules, data_modules]:
+        if os.path.exists(modules):
+            for path in os.listdir(modules):
+                pth = os.path.join(modules, path)
+                if os.path.isdir(pth):
+                    initfile = os.path.join(pth, "__init__.py")
+                    if os.path.exists(initfile):
+                        result[os.path.basename(pth)] = os.path.abspath(pth)
     return result
 
 
