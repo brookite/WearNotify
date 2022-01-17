@@ -126,8 +126,7 @@ def satisfact_requirements(requirements):
             marker = json.load(f)
     if "pip" in marker:
         if any(map(lambda x: x not in marker["pip"], requirements)):
-            request = " ".join(requirements)
-            print(pip_install(request).stdout)
+            print(pip_install(requirements).stdout)
             for requirement in requirements:
                 if requirement not in marker["pip"]:
                     marker["pip"].append(requirement)

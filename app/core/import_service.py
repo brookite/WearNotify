@@ -18,10 +18,10 @@ def load_py_from(path, execute=True):
     return module
 
 
-def pip_install(package):
-    print("Satisfacting requirement ({})...".format(package))
-    LOGGER.info("Satisfacting requirement ({})...".format(package))
+def pip_install(requirements):
+    print("Satisfacting requirement ({}). It may take a while...".format(" ".join(requirements)))
+    LOGGER.info("Satisfacting requirement ({})...".format(" ".join(requirements)))
     return subprocess.run(
-        [sys.executable, '-m', 'pip', 'install', package],
+        [sys.executable, '-m', 'pip', 'install', *requirements],
         stdout=subprocess.PIPE, encoding='utf-8'
     )

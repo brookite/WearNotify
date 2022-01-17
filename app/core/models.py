@@ -18,7 +18,6 @@ def _add_default_settings(object, result):
     put_if_not_present(result, "VERSION", "1.0")
     put_if_not_present(result, "BUILD", 10)
     put_if_not_present(result, "DEPENDENCIES", [])
-    put_if_not_present(result, "DEPENDENCIES_PY", [])
     put_if_not_present(result, "MINIMAL_API_VERSION", 21)
     put_if_not_present(result, "ISOLATED_MODULE", False)
     put_if_not_present(result, "TARGET_API_VERSION", appinfo.API_VERSION)

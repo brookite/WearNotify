@@ -18,10 +18,15 @@ def load_modules(app):
         req = os.path.join(modules[name], "requirements.txt")
         reqs = get_requirements(req)
         satisfact_requirements(reqs)
-        imported[name] = Module(
+        module = Module(
             name,
             import_service.load_py_from(path),
             modules[name],
             app
         )
+        for dep in module.configs["DEPENDENCIES"]:
+            if dep not in app.extensions:
+                LOGGER.error(f"Missing {dep} in extensions. Module {module.name} wasn't loaded")
+                continue
+        imported[name] = module
     return imported
