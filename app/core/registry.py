@@ -51,10 +51,10 @@ def get_registry():
     return registry
 
 
-def route(registry, modules, registries):
+def route(registry, modules, registries, app):
     LOGGER.debug("Rounting registry...")
     if is_std_registry(registry):
-        return get_stdmodule(registry)
+        return get_stdmodule(registry, app)
     if registry.lower() == "default":
         registry = registries["default"]
         if registry not in registries:

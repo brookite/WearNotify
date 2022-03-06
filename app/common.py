@@ -122,6 +122,7 @@ class App:
                                            self.input_context,
                                            self.modules,
                                            self.config,
+                                           self,
                                            handle_ctx
                                            )
 
@@ -149,7 +150,7 @@ class App:
             self.logger.info("Invalid registry")
             return None, None
         else:
-            module = route(reg, self.modules, self.registries)
+            module = route(reg, self.modules, self.registries, self)
             full_request = request
             if self.input_context.get() is not None:
                 full_request = str(self.input_context.get()) + " " + request
@@ -167,6 +168,9 @@ class App:
                     put_request_cache(full_request, response)
                 if module != self.input_context.module:
                     self.runtime_cache.remove(module.name)
+                if module.configs.get("ENTER_CONTEXT") and self.input_context.module != module:
+                    self.logger.debug("Setting new enter context after response")
+                    self.input_context.set(reg, module)
                 return response, module
             else:
                 self.logger.debug(f"Request {request} is cached")
@@ -196,7 +200,7 @@ class App:
         """
         if self.input_context.get():
             reg = self.input_context.get()
-            module = route(reg, self.modules, self.registries)
+            module = route(reg, self.modules, self.registries, self)
         else:
             module = None
         if module:

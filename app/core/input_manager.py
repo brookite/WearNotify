@@ -19,14 +19,15 @@ def load_services(app):
     return imported
 
 
-def input_handler(request, registries, input_ctx, modules, config, handle_ctx=True):
+def input_handler(request, registries, input_ctx, 
+        modules, config, app, handle_ctx=True):
     # if returns null then actions not required
     if not isinstance(request, str) and not config.absolute_cfg("only_string_io_data"):
         return "default", request, {}
     elif input_ctx.get() is not None and handle_ctx:
         LOGGER.debug("Handling request in context")
         reg = input_ctx.get()
-        module = registry.route(reg, modules, registries)
+        module = registry.route(reg, modules, registries, app)
         if request not in module.configs.get("QUIT_COMMANDS"):
             return reg, request, {}
         else:
@@ -36,9 +37,5 @@ def input_handler(request, registries, input_ctx, modules, config, handle_ctx=Tr
     else:
         LOGGER.debug("Handling request out of context")
         reg, request = registry.split(request, registries)
-        module = registry.route(reg, modules, registries)
-        if module:
-            if module.configs.get("ENTER_CONTEXT"):
-                LOGGER.debug("Handling request out of context")
-                input_ctx.set(reg, module)
+        module = registry.route(reg, modules, registries, app)
         return reg, request, {}

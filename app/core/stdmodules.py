@@ -1,6 +1,9 @@
+from .utils import ChapteredText
 from .models import Module
 from .cache import get_module_cached, is_module_cached
+from .appconfig import DEFAULT_MNEMONIC_MODE, DEFAULT_ENCODING
 import re
+
 
 
 class Idel(Module):
@@ -24,9 +27,18 @@ class Idel(Module):
 class Fdel(Module):
     def __init__(self, app):
         super().__init__("fdel", None, None, app)
+        self.text = None
+        self.mnemonic_toggle = False
+        self._chapter_ptr = 0
 
     def init(self):
         pass
+
+    def _toggle_mnemonic(self):
+        if self.mnemonic_toggle:
+            self.mnemonic_toggle = False
+        else:
+            self.mnemonic_toggle = True
 
     @staticmethod
     def filter(text):
@@ -35,16 +47,39 @@ class Fdel(Module):
 
     def swallow(self, value):
         value = value.strip()
+        if self.mnemonic_toggle and value.isdigit():
+            if value == "4":
+                self._chapter_ptr -= 1
+                return self.filter(self.text.get(self._chapter_ptr))
+            elif value == "5":
+                self._chapter_ptr = (self._chapter_ptr + 1) % len(self.text.chapters())
+                return self.filter(self.text.get(self._chapter_ptr))
+            elif value == "1":
+                return ";".join(map(lambda x: x.strip(), self.text.chapters()))[1:]
+            elif value == "0":
+                self._toggle_mnemonic()
+                return 
+
         if is_module_cached("fdel", value):
-            return self.filter(
-                get_module_cached("fdel", value).decode("utf-8")
-            )
+            if value.lower().endswith(".chp"):
+                self.text = ChapteredText(get_module_cached("fdel", value).decode(DEFAULT_ENCODING))
+                self._toggle_mnemonic()
+                return self.filter(self.text.get(self._chapter_ptr))
+            else:   
+                self.text = self.filter(
+                    get_module_cached("fdel", value).decode(DEFAULT_ENCODING)
+                )
+                self._toggle_mnemonic()
+                return self.text
         else:
             return "File not found"
 
     @property
     def configs(self):
-        return self.standard_params({"NOCACHE": True})
+        return self.standard_params(
+            {"NOCACHE": True, 
+             "ENTER_CONTEXT": self.mnemonic_toggle, 
+             "PREF_MNEMMOD": 0x0 if self.mnemonic_toggle else 0x1})
 
 
 class Help(Module):
@@ -81,21 +116,16 @@ REGISTRIES = {
 }
 
 
-def load_std_registry(registry):
+def load_std_registry(registries):
     for i in REGISTRIES:
-        registry[i] = i
+        registries[i] = i
 
 
 def is_std_registry(registry):
-    if registry in REGISTRIES:
-        if isinstance(REGISTRIES[registry], type):
-            return REGISTRIES[registry](None)
-        else:
-            return REGISTRIES[registry]
+    return registry in REGISTRIES
 
 
-def get_stdmodule(registry):
+def get_stdmodule(registry, app=None):
     if isinstance(REGISTRIES[registry], type):
-        return REGISTRIES[registry](None)
-    else:
-        return REGISTRIES[registry]
+        REGISTRIES[registry] = REGISTRIES[registry](app)
+    return REGISTRIES[registry]

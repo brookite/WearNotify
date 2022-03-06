@@ -3,6 +3,7 @@ from . import context as ctx
 import os
 from .logger import get_logger
 from .appconfig import DEFAULT_MODULE_CONFIG
+from . import include
 
 
 LOGGER = get_logger("objects")
@@ -62,6 +63,8 @@ class Module:
         self._ctx = ctx.ModuleContext(self, app)
         if self._native_module:
             _set_in_module(self._native_module, "ctx", self._ctx)
+            for attr in include.MODULES:
+                _set_in_module(self._native_module, attr, include.MODULES[attr])
         self.init()
 
     @property
@@ -136,6 +139,8 @@ class DeliveryService:
         self._ctx = ctx.DeliveryServiceContext(self, native_module, app)
         if self._native_module:
             _set_in_module(self._native_module, "ctx", self._ctx)
+            for attr in include.SERVICES:
+                _set_in_module(self._native_module, attr, include.SERVICES[attr])
         self.init()
 
     @property
@@ -196,6 +201,8 @@ class InputService:
         self._ctx = ctx.InputServiceContext(self, app)
         if self._native_module:
             _set_in_module(self._native_module, "ctx", self._ctx)
+            for attr in include.SERVICES:
+                _set_in_module(self._native_module, attr, include.SERVICES[attr])
         self.init()
 
     @property
@@ -275,6 +282,8 @@ class Extension:
                 self.put_ctx(self._ctx)
             else:
                 self._native_module.ctx = self._ctx
+            for attr in include.EXTENSIONS:
+                _set_in_module(self._native_module, attr, include.EXTENSIONS[attr])
 
     @property
     def native_module(self):
