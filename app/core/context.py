@@ -114,13 +114,20 @@ class ModuleContext:
         module = load_py_from(os.path.join(self._module.path, module_name))
         return module
 
+    def redefine_vsuggestions(self, commands):
+        self._module._vsuggestions = commands
+
+    def redefine_gsuggestions(self, commands):
+        self._module._gsuggestions = commands
+
     def extension(self, name):
         LOGGER.info("Using extension %s" % name)
         if name not in self._builded_ext:
             if name not in self._extensions:
                 LOGGER.error(f"Extension {name} wasn't found")
                 return None
-            self._builded_ext[name] = self._extensions[name].build(self._module)
+            self._builded_ext[name] = self._extensions[name].build(
+                self._module)
         return self._builded_ext[name]
 
     def logger(self):
@@ -392,7 +399,8 @@ class InputServiceContext:
             if name not in self._extensions:
                 LOGGER.error(f"Extension {name} wasn't found")
                 return None
-            self._builded_ext[name] = self._extensions[name].build(self._inputservice)
+            self._builded_ext[name] = self._extensions[name].build(
+                self._inputservice)
         return self._builded_ext[name]
 
     def get_mnemonic(self, mnem, onlycustom=False):
@@ -487,7 +495,8 @@ class InputServiceContext:
         if module.name in self._app.registry:
             if "ENTER_CONTEXT" in module.configs:
                 if module.configs["ENTER_CONTEXT"]:
-                    self._app.input_context.set(self._app.registry[module.name], module)
+                    self._app.input_context.set(
+                        self._app.registry[module.name], module)
 
     def exit_context(self):
         self._app.input_context.null()
@@ -511,7 +520,8 @@ class InputServiceContext:
         LOGGER.info("Importing submodule %s" % module_name)
         # module name without py
         module_name = module_name.replace(".py", "") + ".py"
-        module = load_py_from(os.path.join(self._inputservice.path, module_name))
+        module = load_py_from(os.path.join(
+            self._inputservice.path, module_name))
         return module
 
 
@@ -545,7 +555,8 @@ class DeliveryServiceContext:
             if name not in self._extensions:
                 LOGGER.error(f"Extension {name} wasn't found")
                 return None
-            self._builded_ext[name] = self._extensions[name].build(self._delservice)
+            self._builded_ext[name] = self._extensions[name].build(
+                self._delservice)
         return self._builded_ext[name]
 
     def internal_path(self, path=None):
@@ -606,7 +617,3 @@ class DeliveryServiceContext:
     def remove_cache(self, filename):
         LOGGER.info("Removing module cache: %s" % filename)
         cache.remove_module_cache(self._nativemodule.__name__, filename)
-
-
-
-

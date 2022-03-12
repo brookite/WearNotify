@@ -4,6 +4,19 @@ from core.appconfig import WELCOME_MSG, ABOUT_MSG, APP_NAME
 from core.logger import get_logger
 import sys
 
+logger = get_logger()
+
+
+def dummy(*args, **kwargs):
+    pass
+
+
+try:
+    from ext.input import set_history, init_completing
+except ImportError:
+    init_completing = dummy
+    logger.warning("Auto completing and manageable history are unsupported in your platform")
+
 
 bundle = None
 
@@ -45,7 +58,7 @@ def user_action():
 
 def main():
     global bundle
-    logger = get_logger()
+    completer = init_completing([])
     bundle = App()
     bundle.define_ooc_command("termux", termux)
     bundle.define_ooc_command("speak", speak)
@@ -55,6 +68,9 @@ def main():
     sleep(0.1)
     while True:
         try:
+            if completer:
+                set_history(bundle.vsuggestions)
+                completer.commands = bundle.gsuggestions
             context = '' if not bundle.input_context.get() else \
                 f"({bundle.input_context.get()}) "
             print(context, end='')
@@ -69,6 +85,7 @@ def main():
                 break
             elif bundle.check_ooc(req):
                 continue
+            bundle.vsuggestions.append(req)
             registry, request, additional = bundle.handle_input(req)
             response, module = bundle.delegate(registry, request, additional, user_action)
             if not response:

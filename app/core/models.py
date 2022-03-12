@@ -60,6 +60,8 @@ class Module:
         self._native_module = native_module
         self._path = path
         self._app = app
+        self._vsuggestions = []
+        self._gsuggestions = []
         self._ctx = ctx.ModuleContext(self, app)
         if self._native_module:
             _set_in_module(self._native_module, "ctx", self._ctx)

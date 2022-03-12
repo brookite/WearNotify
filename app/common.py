@@ -29,6 +29,9 @@ class App:
         self.extensions = load_extensions(self)
         self.modules = load_modules(self)
         load_predefined_registries(self.registries, self.modules)
+        self.DEFAULT_GSUGGESTIONS = tuple(self.registries.keys())
+        self._vsuggestions = []
+        self._gsuggestions = self.DEFAULT_GSUGGESTIONS
         self.input_services = input_manager.load_services(self)
         self.config.load(self)
         self.pipeline = Pipeline(self.config)
@@ -37,7 +40,7 @@ class App:
         self._request_lock = RLock()
         self._mnemmode = self.config.absolute_cfg("default_mnemonic_mode")
         self._mnemmem = self.config.absolute_cfg("default_mnemonic_mode")  # mnemonic mode memory buffer
-        self.input_context.sethook(self.hookmnemmod)
+        self.input_context.sethook(self.context_hook)
         self._current_user_action = None
         self.ooc = {
             "cleanup": self.clear_cache,
@@ -55,9 +58,10 @@ class App:
     def is_context_entered(self):
         return self.input_context.get() is not None
 
-    def hookmnemmod(self, prev, new, prev_module, new_module):
+    def context_hook(self, prev, new, prev_module, new_module):
         """
-        Handler that calls when input context was changed. It is used for changing mnemonic mode for every module
+        Handler that calls when input context was changed. 
+        It is used for changing mnemonic mode and suggestions for every module
         :param prev: Previous registry str representation
         :param new: New registry str representation
         :param prev_module: Previous module in context
@@ -71,9 +75,22 @@ class App:
             else:
                 self.chmnemmod(self._mnemmem)
                 self._mnemmem = self.config.absolute_cfg("default_mnemonic_mode")
+            self._vsuggestions = new_module._vsuggestions
+            self._gsuggestions = new_module._gsuggestions
         else:
             self.chmnemmod(self._mnemmem)
             self._mnemmem = self.config.absolute_cfg("default_mnemonic_mode")
+
+            self._vsuggestions = []
+            self._gsuggestions = self.DEFAULT_GSUGGESTIONS
+
+    @property
+    def vsuggestions(self):
+        return self._vsuggestions
+
+    @property
+    def gsuggestions(self):
+        return self._gsuggestions
 
     def chmnemmod(self, pref=None):
         """
