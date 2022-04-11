@@ -34,11 +34,12 @@ class Fdel(Module):
 
     def init(self):
         path = module_path("fdel")
-        files = []
-        for file in os.listdir(path):
-            if os.path.isfile(os.path.join(path, file)):
-                files.append(file)
-        self._ctx.extend_gsuggestions(files)
+        if os.path.exists(path):
+            files = []
+            for file in os.listdir(path):
+                if os.path.isfile(os.path.join(path, file)):
+                    files.append(file)
+            self._ctx.extend_gsuggestions(files)
 
     @staticmethod
     def filter(text):
