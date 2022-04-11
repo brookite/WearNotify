@@ -1,8 +1,9 @@
 from .utils import ChapteredText
 from .models import Module
-from .cache import get_module_cached, is_module_cached
-from .appconfig import DEFAULT_MNEMONIC_MODE, DEFAULT_ENCODING
+from .cache import get_module_cached, is_module_cached, module_path
+from .appconfig import DEFAULT_ENCODING
 import re
+import os
 
 
 
@@ -32,13 +33,12 @@ class Fdel(Module):
         self._chapter_ptr = 0
 
     def init(self):
-        pass
-
-    def _toggle_mnemonic(self):
-        if self.mnemonic_toggle:
-            self.mnemonic_toggle = False
-        else:
-            self.mnemonic_toggle = True
+        path = module_path("fdel")
+        files = []
+        for file in os.listdir(path):
+            if os.path.isfile(os.path.join(path, file)):
+                files.append(file)
+        self._ctx.extend_gsuggestions(files)
 
     @staticmethod
     def filter(text):
@@ -63,13 +63,13 @@ class Fdel(Module):
         if is_module_cached("fdel", value):
             if value.lower().endswith(".chp"):
                 self.text = ChapteredText(get_module_cached("fdel", value).decode(DEFAULT_ENCODING))
-                self._toggle_mnemonic()
+                self.mnemonic_toggle = True
                 return self.filter(self.text.get(self._chapter_ptr))
             else:   
                 self.text = self.filter(
                     get_module_cached("fdel", value).decode(DEFAULT_ENCODING)
                 )
-                self._toggle_mnemonic()
+                self.mnemonic_toggle = False
                 return self.text
         else:
             return "File not found"
@@ -125,7 +125,14 @@ def is_std_registry(registry):
     return registry in REGISTRIES
 
 
+def init_stdmodules(app):
+    for registry in REGISTRIES:
+        if isinstance(REGISTRIES[registry], type):
+            REGISTRIES[registry] = REGISTRIES[registry](app)
+
+
 def get_stdmodule(registry, app=None):
     if isinstance(REGISTRIES[registry], type):
         REGISTRIES[registry] = REGISTRIES[registry](app)
+        REGISTRIES[registry].init()
     return REGISTRIES[registry]

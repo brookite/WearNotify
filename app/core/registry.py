@@ -1,7 +1,7 @@
-from .appconfig import DATA_PATH
+from .appconfig import DATA_PATH, AUTO_INITIALIZING_STDMODULES
 from .storage import read_json
 from .stdmodules import load_std_registry, \
-    is_std_registry, get_stdmodule
+    is_std_registry, get_stdmodule, init_stdmodules
 import os
 from .logger import get_logger
 
@@ -13,6 +13,9 @@ SPECIAL_SYMBOLS = [':', ' ', '=']
 
 
 def split(request, registries):
+    '''
+    Split into registry and request for further request handling in target module
+    '''
     special = list(filter(lambda x: len(x) > 3 or x.isalpha(), registries.keys()))
     if len(request) >= 3 and request.startswith("0"):
         reg = request[:3]
@@ -35,13 +38,21 @@ def split(request, registries):
         return "default", request
 
 
-def load_predefined_registries(registries, modules):
-    for name in modules:
-        if name not in registries:
-            registries[name] = name
-
+def load_predefined_registries(app):
+    '''
+    Loads registries as module name and initializes stdmodules if required
+    '''
+    for name in app.modules:
+        if name not in app.registries:
+            app.registries[name] = name
+    if AUTO_INITIALIZING_STDMODULES:
+        init_stdmodules(app)
+    
 
 def get_registry():
+    """
+    Loads registries to app
+    """
     LOGGER.debug("Getting registries")
     registry = os.path.join(DATA_PATH, "registry.json")
     registry = read_json(registry)
@@ -52,6 +63,9 @@ def get_registry():
 
 
 def route(registry, modules, registries, app):
+    '''
+    Routing to module by registry
+    '''
     LOGGER.debug("Rounting registry...")
     if is_std_registry(registry):
         return get_stdmodule(registry, app)

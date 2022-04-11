@@ -28,12 +28,12 @@ class App:
         self.registries = get_registry()
         self.extensions = load_extensions(self)
         self.modules = load_modules(self)
-        load_predefined_registries(self.registries, self.modules)
         self.DEFAULT_GSUGGESTIONS = tuple(self.registries.keys())
         self._vsuggestions = []
         self._gsuggestions = self.DEFAULT_GSUGGESTIONS
         self.input_services = input_manager.load_services(self)
         self.config.load(self)
+        load_predefined_registries(self)
         self.pipeline = Pipeline(self.config)
         self.delivery_services = delivery.load_services(self)
         self.input_context = InputContext()

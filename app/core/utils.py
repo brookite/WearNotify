@@ -1,3 +1,8 @@
+def dummy(*args, **kwargs):
+    # empty function
+    pass
+
+
 class ChapteredText:
     def __init__(self, text):
         self._chapters = {"": ""}

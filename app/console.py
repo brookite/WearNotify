@@ -2,13 +2,10 @@ from common import App
 from time import sleep
 from core.appconfig import WELCOME_MSG, ABOUT_MSG, APP_NAME
 from core.logger import get_logger
+from core.utils import dummy
 import sys
 
 logger = get_logger()
-
-
-def dummy(*args, **kwargs):
-    pass
 
 
 try:

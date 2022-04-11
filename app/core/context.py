@@ -120,6 +120,22 @@ class ModuleContext:
     def redefine_gsuggestions(self, commands):
         self._module._gsuggestions = commands
 
+    def get_gsuggestions(self):
+        return self._module._gsuggestions
+
+    def get_vsuggestions(self):
+        return self._module._gsuggestions
+
+    def extend_gsuggestions(self, extension_list):
+        if type(self._app._gsuggestions) is not dict:
+            sugg = dict.fromkeys(self._app._gsuggestions)
+            for key in sugg:
+                sugg[key] = []
+        else:
+            sugg = dict(self._app._gsuggestions)
+        sugg[self._module.name] = extension_list
+        self._app._gsuggestions = sugg
+
     def extension(self, name):
         LOGGER.info("Using extension %s" % name)
         if name not in self._builded_ext:

@@ -47,6 +47,7 @@ ISOLATED_MODULE = False
 MAX_REQUEST_CACHE_SIZE = 262144
 DEFAULT_INPUTSERVICE = "default"
 RESET_PIPECONFIG = False
+AUTO_INITIALIZING_STDMODULES = True # more ram memory will be used
 ONLY_STRING_IO_DATA = False
 PIPELINE_ENGINE = "DANDELION"
 LOG_FILE = os.path.join(DATA_PATH, "cache", "logs", format_filename())
