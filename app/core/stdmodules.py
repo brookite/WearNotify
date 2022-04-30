@@ -56,10 +56,24 @@ class Fdel(Module):
                 self._chapter_ptr = (self._chapter_ptr + 1) % len(self.text.chapters())
                 return self.filter(self.text.get(self._chapter_ptr))
             elif value == "1":
-                return ";".join(map(lambda x: x.strip(), self.text.chapters()))[1:]
+                infostr = f"Current chapter number: {self._chapter_ptr + 1}|"
+                for i, chapter in enumerate(map(lambda x: x.strip(), self.text.chapters())):
+                    infostr += f"{i+1}.{chapter}|"
+                return infostr[:-1]
             elif value == "0":
-                self._toggle_mnemonic()
-                return 
+                self._mnemonic_toggle = False
+                return
+            elif value == "7":
+                self._chapter_ptr = len(self.text.chapters()) - 1
+                return "Next chapter number: 0"
+            elif value == "6":
+                self._chapter_ptr = len(self.text.chapters()) - 2
+                return f"Next chapter number: {self._chapter_ptr + 2}"
+        elif self.mnemonic_toggle and value.startswith("cmd"):
+            value = value.replace("cmd", "").lstrip()
+            if value.isdigit():
+                self._chapter_ptr = (int(value)-1) % len(self.text.chapters())
+                return self.filter(self.text.get(self._chapter_ptr))
 
         if is_module_cached("fdel", value):
             if value.lower().endswith(".chp"):
