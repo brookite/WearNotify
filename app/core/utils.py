@@ -5,8 +5,8 @@ def dummy(*args, **kwargs):
 
 class ChapteredText:
     def __init__(self, text):
-        self._chapters = {"": ""}
-        current = ""
+        self._chapters = {"Header": ""}
+        current = "Header"
         for line in text.split("\n"):
             if line.startswith("=="):
                 current = line[2:]

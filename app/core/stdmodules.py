@@ -46,40 +46,65 @@ class Fdel(Module):
         text = re.sub(r"[\n\t\r]+", "|", text)
         return text
 
+    def chapter_filter(self, text):
+        new_text = ''
+        text = text.split("\n")
+        for line in text:
+            line = line.strip()
+            if line:
+                new_text += re.sub(r"[\n\t\r]+", "|", line) + "|"
+        if new_text:
+            new_text = new_text[::-1]
+        return new_text
+
     def swallow(self, value):
         value = value.strip()
         if self.mnemonic_toggle and value.isdigit():
             if value == "4":
-                self._chapter_ptr -= 1
-                return self.filter(self.text.get(self._chapter_ptr))
+                self._chapter_ptr = (self._chapter_ptr - 1) % len(self.text.chapters())
             elif value == "5":
                 self._chapter_ptr = (self._chapter_ptr + 1) % len(self.text.chapters())
-                return self.filter(self.text.get(self._chapter_ptr))
             elif value == "1":
-                infostr = f"Current chapter number: {self._chapter_ptr + 1}|"
-                for i, chapter in enumerate(map(lambda x: x.strip(), self.text.chapters())):
-                    infostr += f"{i+1}.{chapter}|"
-                return infostr[:-1]
+                return self.chapter_filter(self.text.get(self._chapter_ptr))
             elif value == "0":
                 self._mnemonic_toggle = False
                 return
             elif value == "7":
-                self._chapter_ptr = len(self.text.chapters()) - 1
-                return "Next chapter number: 0"
+                self._chapter_ptr = 0
             elif value == "6":
-                self._chapter_ptr = len(self.text.chapters()) - 2
-                return f"Next chapter number: {self._chapter_ptr + 2}"
+                self._chapter_ptr = len(self.text.chapters()) - 1
+            elif value == "10" or value == "8":
+                infostr = ""
+                for i, chapter in enumerate(map(lambda x: x.strip(), self.text.chapters())):
+                    infostr += f"{i + 1}.{chapter}|" if i != self._chapter_ptr else f"{i + 1}>{chapter}|"
+                return infostr[:-1]
+            return "{}>{}".format(self._chapter_ptr + 1, self.text.chapters()[self._chapter_ptr])
         elif self.mnemonic_toggle and value.startswith("cmd"):
             value = value.replace("cmd", "").lstrip()
             if value.isdigit():
                 self._chapter_ptr = (int(value)-1) % len(self.text.chapters())
                 return self.filter(self.text.get(self._chapter_ptr))
+            elif value.startswith("find"):
+                value = value.replace("find", "").lstrip()
+                chapters = self.text.chapters()
+                found = None
+                for i in range(len(chapters)):
+                    if value.lower() in chapters[i].lower():
+                        found = i
+                        break
+                    elif value.lower() in self.text.get(i).lower():
+                        found = i
+                        break
+                if found is not None:
+                    self._chapter_ptr = found
+                    return "{}>{}".format(self._chapter_ptr + 1, self.text.chapters()[self._chapter_ptr])
+                return
 
         if is_module_cached("fdel", value):
             if value.lower().endswith(".chp"):
                 self.text = ChapteredText(get_module_cached("fdel", value).decode(DEFAULT_ENCODING))
                 self.mnemonic_toggle = True
-                return self.filter(self.text.get(self._chapter_ptr))
+                return
             else:   
                 self.text = self.filter(
                     get_module_cached("fdel", value).decode(DEFAULT_ENCODING)
