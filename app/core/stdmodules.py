@@ -6,7 +6,6 @@ import re
 import os
 
 
-
 class Idel(Module):
     def __init__(self, app):
         super().__init__("idel", None, None, app)
@@ -54,16 +53,18 @@ class Fdel(Module):
             if line:
                 new_text += re.sub(r"[\n\t\r]+", "|", line) + "|"
         if new_text:
-            new_text = new_text[::-1]
+            new_text = new_text[:-1]
         return new_text
 
     def swallow(self, value):
         value = value.strip()
         if self.mnemonic_toggle and value.isdigit():
             if value == "4":
-                self._chapter_ptr = (self._chapter_ptr - 1) % len(self.text.chapters())
+                self._chapter_ptr = (self._chapter_ptr -
+                                     1) % len(self.text.chapters())
             elif value == "5":
-                self._chapter_ptr = (self._chapter_ptr + 1) % len(self.text.chapters())
+                self._chapter_ptr = (self._chapter_ptr +
+                                     1) % len(self.text.chapters())
             elif value == "1":
                 return self.chapter_filter(self.text.get(self._chapter_ptr))
             elif value == "0":
@@ -82,7 +83,8 @@ class Fdel(Module):
         elif self.mnemonic_toggle and value.startswith("cmd"):
             value = value.replace("cmd", "").lstrip()
             if value.isdigit():
-                self._chapter_ptr = (int(value)-1) % len(self.text.chapters())
+                self._chapter_ptr = (
+                    int(value) - 1) % len(self.text.chapters())
                 return self.filter(self.text.get(self._chapter_ptr))
             elif value.startswith("find"):
                 value = value.replace("find", "").lstrip()
@@ -102,10 +104,11 @@ class Fdel(Module):
 
         if is_module_cached("fdel", value):
             if value.lower().endswith(".chp"):
-                self.text = ChapteredText(get_module_cached("fdel", value).decode(DEFAULT_ENCODING))
+                self.text = ChapteredText(get_module_cached(
+                    "fdel", value).decode(DEFAULT_ENCODING))
                 self.mnemonic_toggle = True
                 return
-            else:   
+            else:
                 self.text = self.filter(
                     get_module_cached("fdel", value).decode(DEFAULT_ENCODING)
                 )
@@ -117,8 +120,8 @@ class Fdel(Module):
     @property
     def configs(self):
         return self.standard_params(
-            {"NOCACHE": True, 
-             "ENTER_CONTEXT": self.mnemonic_toggle, 
+            {"NOCACHE": True,
+             "ENTER_CONTEXT": self.mnemonic_toggle,
              "PREF_MNEMMOD": 0x0 if self.mnemonic_toggle else 0x1})
 
 
