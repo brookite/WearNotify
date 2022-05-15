@@ -26,14 +26,14 @@ class App:
         self.config = Config()
         self.logger.debug("Initializing app")
         self.registries = get_registry()
+        self._gsuggestions = tuple(self.registries.keys())
+        self._vsuggestions = []
         self.extensions = load_extensions(self)
         self.modules = load_modules(self)
-        self.DEFAULT_GSUGGESTIONS = tuple(self.registries.keys())
-        self._vsuggestions = []
-        self._gsuggestions = self.DEFAULT_GSUGGESTIONS
         self.input_services = input_manager.load_services(self)
         self.config.load(self)
         load_predefined_registries(self)
+        self.DEFAULT_GSUGGESTIONS = self._gsuggestions
         self.pipeline = Pipeline(self.config)
         self.delivery_services = delivery.load_services(self)
         self.input_context = InputContext()
