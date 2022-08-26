@@ -393,6 +393,7 @@ def init():
     manip = Manipulator(ctx)
     app = ctx.fork()
     thread = Thread(target=server)
+    thread.daemon = True
     thread.start()
 
 
@@ -401,4 +402,3 @@ def exit():
     if httpd and thread:
         httpd.shutdown()
         httpd.server_close()
-        thread.join()
