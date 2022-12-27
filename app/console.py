@@ -92,7 +92,6 @@ def main():
             sleep(0.2)
         except KeyboardInterrupt:
             logger.info("Exiting by CTRL+C...")
-            req = ''
             break
         except Exception:
             logger.exception(f"{APP_NAME} console exception:")

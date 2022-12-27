@@ -6,18 +6,18 @@ import os
 import json
 
 PORT = 6904
-app = None
-REQ = "<html><head><title>Mnemonic Server</title></head><body>It is mnemonic server. Read the docs</body>"
-event = Event()
-uact = False
+HTML_BODY = "<html><head><title>Mnemonic Server</title></head><body>It is mnemonic server. Read the docs</body>"
+ctx = None
 
+app = None
+uact = False
 httpd = None
 thread = None
 manip = None
-ctx = None
 
 SETTINGS = {"MODE": 0x1}
 
+event = Event()
 
 class Manipulator:
     def __init__(self, ctx):
@@ -221,7 +221,6 @@ class Manipulator:
         self.msg("User Action: {}; Input Context: {}; Selected mod: {}".format(self._user_action,
                                                                                self._app.input_context.get(),
                                                                                self._mods[self._selectedmod].__name__))
-
     def push(self):
         if self._user_action:
             self.msg("Released user action")
@@ -298,6 +297,44 @@ class Manipulator:
         self._cursor = self._mods[self._selectedmod]()
         self.msg("Selected mod: {}".format(self._cursor.__name__))
 
+class MnemonicHTTPServerHandler(http.server.SimpleHTTPRequestHandler):
+    def _form_response(self):
+        self.protocol_version = 'HTTP/1.1'
+        self.send_response(200, 'OK')
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(bytes(HTML_BODY, 'UTF-8'))
+
+    def do_GET(self):
+        data = self.requestline.split(" ")[1][1:]
+        thread = Thread(target=handler, args=[data])
+        thread.start()
+        self._form_response()
+
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'])
+        post_data = urllib.parse.parse_qs(self.rfile.read(content_length).decode("utf-8"))
+        if "data" in post_data:
+            data = post_data["data"][0]
+        elif "request" in post_data:
+            data = post_data["request"][0]
+        else:
+            data = None
+        if data:
+            thread = Thread(target=handler, args=["request/" + data])
+            thread.start()
+        self._form_response()
+
+    def log_message(self, format, *args):
+        enabled = False
+        if enabled:
+            http.server.SimpleHTTPRequestHandler.log_message(self, format, *args)
+
+
+def server():
+    print("Http Server Serving at port", PORT)
+    httpd.serve_forever()
+
 
 def handler(request):
     global app, manip
@@ -346,54 +383,14 @@ def user_action():
         event.clear()
 
 
-class MyHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def _form_response(self):
-        self.protocol_version = 'HTTP/1.1'
-        self.send_response(200, 'OK')
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(bytes(REQ, 'UTF-8'))
-
-    def do_GET(self):
-        data = self.requestline.split(" ")[1][1:]
-        thread = Thread(target=handler, args=[data])
-        thread.start()
-        self._form_response()
-
-    def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        post_data = urllib.parse.parse_qs(self.rfile.read(content_length).decode("utf-8"))
-        if "data" in post_data:
-            data = post_data["data"][0]
-        elif "request" in post_data:
-            data = post_data["request"][0]
-        else:
-            data = None
-        if data:
-            thread = Thread(target=handler, args=["request/" + data])
-            thread.start()
-        self._form_response()
-
-    def log_message(self, format, *args):
-        enabled = False
-        if enabled:
-            http.server.SimpleHTTPRequestHandler.log_message(self, format, *args)
-
-
-def server():
-    global httpd
-    socketserver.TCPServer.allow_reuse_address = True
-    httpd = socketserver.TCPServer(("", PORT), MyHttpRequestHandler)
-    print("Http Server Serving at port", PORT)
-    httpd.serve_forever()
-
-
 def init():
-    global app, manip, thread
+    global app, manip, thread, httpd
     manip = Manipulator(ctx)
     app = ctx.fork()
+    socketserver.TCPServer.allow_reuse_address = True
+    httpd = socketserver.TCPServer(("", PORT), MnemonicHTTPServerHandler)
+
     thread = Thread(target=server)
-    thread.daemon = True
     thread.start()
 
 

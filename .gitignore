@@ -1,9 +1,9 @@
 .idea/
-
-/test_imgs/
-
-/test_server/
-
 __pycache__/
-
 /data/
+/private_tests/
+/unused/
+/deprecated/
+/future.txt
+/changelist.txt
+/info_ru.txt
